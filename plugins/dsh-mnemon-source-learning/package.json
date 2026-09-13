@@ -78,7 +78,10 @@
     "@deepseek-ai/dsh-typert-protocol": "0.1.5-rc.1",
     "@deepseek-ai/dsh-user-approval": "0.1.5-rc.1",
     "@deepseek-ai/dsh-util-values": "0.1.5-rc.1",
-    "@deepseek-ai/dsh-command-feedback": "0.1.5-rc.1"
+    "@deepseek-ai/dsh-command-feedback": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-anonymous-user-id": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-attachment": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-commands": "0.1.5-rc.1"
   },
   "publishConfig": {
     "access": "public",

@@ -12,7 +12,7 @@ const providerImports = new Set(['dsh-mnemon-source-memory-spaces/provider-sdk',
 const threeTierExtensions = new Set(['dsh-mnemon-strategy-auto-capture', 'dsh-mnemon-strategy-light-context', 'dsh-mnemon-strategy-scoped'])
 const threeTierOwner = 'dsh-mnemon-strategy-default-three-tier'
 const workspaceOwner = 'dsh-mnemon-strategy-workspace'
-const workspaceExtensions = new Set(['focus', 'journal-capture', 'prompt-schedule', 'review-cycle', 'team-coordination'].map(name => 'dsh-mnemon-strategy-' + name))
+const workspaceExtensions = new Set(['focus', 'journal-capture', 'learning-cycle', 'prompt-schedule', 'review-cycle', 'team-coordination'].map(name => 'dsh-mnemon-strategy-' + name))
 const libraryNames = new Set(['dsh-mnemon-workspace-kit'])
 const manifests = new Map(pluginNames.map(name => [name, JSON.parse(readFileSync(join(root, 'plugins', name, 'package.json'), 'utf8'))]))
 
@@ -50,7 +50,7 @@ function packageName(specifier: string): string {
 describe('standalone plugin repository boundary', () => {
   it('keeps independent Sources, complete Strategies, their contributions and private Providers explicit', () => {
     expect(pluginNames.filter(name => name.startsWith('dsh-mnemon-source-'))).toEqual([
-      'agent-jobs', 'canvas', 'collaboration', 'documents', 'files', 'journal', 'memory-spaces',
+      'agent-jobs', 'canvas', 'collaboration', 'documents', 'files', 'journal', 'learning', 'memory-spaces',
       'notifications', 'playbooks', 'project-context', 'review', 'runtime', 'sessions', 'sync', 'tasks',
     ].map(name => 'dsh-mnemon-source-' + name))
     expect(pluginNames.filter(name => name.startsWith('dsh-mnemon-strategy-'))).toEqual([...threeTierExtensions, threeTierOwner, ...workspaceExtensions, workspaceOwner].sort())

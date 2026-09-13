@@ -1,0 +1,25 @@
+{
+  "checkpoint": "183fd9f",
+  "harness": "tests/learning-flash.spec.ts",
+  "environment": {
+    "dsh": "0.1.5-rc.1",
+    "mnemon": "0.2.7",
+    "model": "deepseek-flash",
+    "modelsReturned": [
+      "deepseek-flash"
+    ],
+    "isolated": true
+  },
+  "result": "passed",
+  "modelCalls": 11,
+  "maxConcurrentModels": 1,
+  "toolErrors": [],
+  "checks": [
+    "human evidence captured; real Flash review persisted; stable preference pending with independent signals",
+    "explicit negative feedback reopened review; plugin wake did not count as a human turn; original remained active",
+    "actual task completion returned as outcome evidence",
+    "manual review used the same real Flash model and persisted completion"
+  ],
+  "scope": "Published DSH agent loop, real hosted Flash model, native Mnemon, optional Sources and Strategy; automated integration test.",
+  "webui": "Pending: browser reports ERR_BLOCKED_BY_CLIENT for the local test address. No screenshots from this checkpoint yet."
+}

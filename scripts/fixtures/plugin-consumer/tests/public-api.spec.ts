@@ -38,7 +38,7 @@ describe('published author API', () => {
   })
   it('keeps Context and testing types independent of private engine types', async () => {
     expectTypeOf<Context['mnemonMemory']>().toEqualTypeOf<MnemonMemoryService>()
-    expectTypeOf<keyof MnemonMemoryService>().toEqualTypeOf<'installContributions'>()
+    expectTypeOf<keyof MnemonMemoryService>().toEqualTypeOf<'installContributions' | 'observeOperations'>()
     type Query = Parameters<NonNullable<MemorySourceRuntime['query']>>[0]
     type Mutation = Parameters<NonNullable<MemorySourceRuntime['mutate']>>[0]
     expectTypeOf<keyof Query['view']>().toEqualTypeOf<'id' | 'scope'>()
@@ -48,7 +48,7 @@ describe('published author API', () => {
     for (const key of ['MemoryRuntime', 'MemoryContributionRegistry', 'MemoryGenerationHost']) expect(key in sdk).toBe(false)
     const runner = new MemoryCompositionRunner()
     try {
-      expect(Object.keys(runner.context.mnemonMemory)).toEqual(['installContributions'])
+      expect(Object.keys(runner.context.mnemonMemory)).toEqual(['observeOperations', 'installContributions'])
       expect('runtime' in runner).toBe(false)
       expect('generations' in runner).toBe(false)
       expect(runner.inspect().evaluation.sourceInstanceKeys).toEqual([])
