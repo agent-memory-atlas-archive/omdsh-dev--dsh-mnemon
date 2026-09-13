@@ -139,3 +139,26 @@ it('does not accept evidence that was removed from the bounded model review', as
     expect(records.some(record => record.kind === 'proposal')).toBe(false)
   } finally { await runner.dispose() }
 })
+
+it('does not invalidate its own management snapshots and follows a linked replacement state', async () => {
+  const store = await fixture(); await human(store, 1); await review(store, 'fact')
+  let snapshot = await store.store.read(), candidate = snapshot.records.find(record => record.kind === 'proposal')!
+  snapshot = await store.change(scope, 'approve', { id: candidate.id, version: candidate.version }); candidate = snapshot.records.find(record => record.id === candidate.id)!
+  const event = { id: 'operator-approval', occurredAt: new Date().toISOString(), scope, sourceInstanceKey: 'source:learning', sourceTypeId: 'learning', operation: 'approve', kind: 'management' as const, actor: 'operator' as const, recordIds: [candidate.id] }
+  await store.operation(event, 'source:learning')
+  expect((await store.store.read()).revision).toBe(snapshot.revision)
+  await store.change(scope, 'link-destination', { id: candidate.id, version: candidate.version, sourceInstanceKey: 'source:notes', learningSourceInstanceKey: 'source:learning', recordId: 'old-note', destinationState: 'active' })
+  await store.operation({ ...event, id: 'replacement', sourceInstanceKey: 'source:notes', sourceTypeId: 'project-context', recordIds: ['new-note', 'old-note'], records: [{ id: 'new-note', state: 'active', revision: '2' }, { id: 'old-note', state: 'archived', revision: '3' }] }, 'source:learning')
+  expect((await store.store.read()).records.find(record => record.id === candidate.id)?.data).toMatchObject({ destinationState: 'archived', destinationRevision: '3' })
+})
+it('never partly approves a batch containing an ineligible preference', async () => {
+  const store = await fixture(); await human(store, 1)
+  const window = learningWindow(await store.store.read(), scope)!
+  await store.complete(scope, { token: window.token, summary: 'Review two observations', proposals: [
+    { category: 'fact', title: 'Build command', content: 'Use pnpm verify for checks.', scope: 'project', evidenceIds: [window.evidence[0]!.id] },
+    { category: 'preference', title: 'Response format', content: 'Prefer concise responses.', scope: 'global', evidenceIds: [window.evidence[0]!.id] },
+  ] }, window)
+  const snapshot = await store.store.read(), candidates = snapshot.records.filter(record => record.kind === 'proposal')
+  await expect(store.change(scope, 'batch-approve', { recordIds: candidates.map(record => record.id), versions: Object.fromEntries(candidates.map(record => [record.id, record.version])) })).rejects.toThrow('two independent')
+  expect((await store.store.read()).revision).toBe(snapshot.revision)
+})

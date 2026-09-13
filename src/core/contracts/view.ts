@@ -73,6 +73,8 @@ export interface MemorySourceManagementRequest {
 export interface MemorySourceManagementResult {
   revision: string
   value: MemoryJsonValue
+  /** Changed metadata, including implicit changes such as a superseded original. */
+  records?: import('./observations.ts').MemoryOperationRecord[]
 }
 
 /** Sanitized Source instance descriptor returned to authenticated clients. */

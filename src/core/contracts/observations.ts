@@ -1,5 +1,8 @@
 import type { MemoryMutationCompletion, MemoryOperationScope, MemoryReceiptStatus } from './index.ts'
 
+/** Optional Source-owned metadata; state vocabulary belongs to that Source. */
+export interface MemoryOperationRecord { id: string; revision?: string; state?: string }
+
 /** Operation metadata for optional feedback plugins. Never includes prompts, grants or record bodies. */
 export interface MemoryOperationObservation {
   id: string
@@ -12,6 +15,7 @@ export interface MemoryOperationObservation {
   actor: 'model' | 'operator'
   viewId?: string
   recordIds: string[]
+  records?: MemoryOperationRecord[]
   revision?: string
   status?: MemoryReceiptStatus
   completion?: MemoryMutationCompletion

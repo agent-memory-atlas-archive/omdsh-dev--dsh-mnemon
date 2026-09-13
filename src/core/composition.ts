@@ -775,13 +775,16 @@ export class MemoryCompositionGeneration {
       ...(requestValue.signal === undefined ? {} : { signal: requestValue.signal }),
     }
     const result = await source.runtime.manage(request)
+    const records = operationRecords(result.records)
     const normalized = jsonClone({
       revision: requiredText(result.revision, 'memory Source management result revision', 500),
       value: result.value,
+      ...(records === undefined ? {} : { records }),
     }, 'memory Source management result')
     if (request.mode === 'mutate') this.observe(source, {
       scope: request.scope, operation, kind: 'management', actor: 'operator', revision: normalized.revision,
-      recordIds: operationRecordIds(request.input),
+      recordIds: records?.map(record => record.id) ?? operationRecordIds(request.input),
+      ...(records === undefined ? {} : { records }),
     })
     return normalized
   }
@@ -872,8 +875,10 @@ export class MemoryCompositionGeneration {
       ...receipt,
       id: requiredText(receipt.id, 'memory mutation Receipt id', 500),
     }, 'memory mutation Receipt')
+    const records = receipt.details && typeof receipt.details === 'object' && !Array.isArray(receipt.details) ? operationRecords(receipt.details.records) : undefined
     this.observe(source, { scope: view.scope, viewId: view.id, operation: offer.sourceActionId,
-      kind: 'mutation', actor: 'model', recordIds: operationRecordIds(receipt.details, input),
+      kind: 'mutation', actor: 'model', recordIds: records?.map(record => record.id) ?? operationRecordIds(receipt.details, input),
+      ...(records === undefined ? {} : { records }),
       status: receipt.status, completion: receipt.completion,
       ...(receipt.revision === undefined ? {} : { revision: receipt.revision }),
     })
@@ -913,8 +918,19 @@ export class MemoryCompositionGeneration {
   }
 }
 
+function operationRecords(value: unknown): import('./contracts/index.ts').MemoryOperationRecord[] | undefined {
+  if (!Array.isArray(value) || value.length > 100) return undefined
+  const records: import('./contracts/index.ts').MemoryOperationRecord[] = []
+  for (const item of value) {
+    if (!item || typeof item !== 'object' || typeof item.id !== 'string' || !item.id || item.id.length > 500) return undefined
+    records.push({ id: item.id, ...(typeof item.revision === 'string' && item.revision.length <= 500 ? { revision: item.revision } : {}), ...(typeof item.state === 'string' && item.state.length <= 100 ? { state: item.state } : {}) })
+  }
+  return records
+}
+
 function operationRecordIds(...values: Array<MemoryJsonValue | undefined>): string[] {
   for (const value of values) if (value && typeof value === 'object' && !Array.isArray(value)) {
+    if (Array.isArray(value.recordIds) && value.recordIds.length <= 100 && value.recordIds.every(id => typeof id === 'string' && id.length > 0 && id.length <= 500)) return [...new Set(value.recordIds as string[])]
     const recordId = value.recordId ?? value.id
     if (typeof recordId === 'string' && recordId.length > 0 && recordId.length <= 500) return [recordId]
   }

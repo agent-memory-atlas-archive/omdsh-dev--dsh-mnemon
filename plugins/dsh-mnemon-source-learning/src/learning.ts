@@ -68,7 +68,7 @@ export class LearningStore {
         round = Number(cycle.data.rounds)
       }
       records.push(newRecord('observation', redactLearningText(value.title).slice(0, 300) || 'Learning evidence', content, scope.sessionId ? 'session' : 'project', scope,
-        { ...value.data, eventKey: value.eventKey, independentKey: value.independentKey ?? value.eventKey, origin: value.origin, round, redacted: content !== value.content, capturedAt: new Date().toISOString() }))
+        { ...value.data, eventKey: value.eventKey, independentKey: value.independentKey ?? value.eventKey, origin: value.origin, round, ...(value.data?.exactQuote === true ? { exactQuote: content === value.content } : {}), redacted: content !== value.content, capturedAt: new Date().toISOString() }))
       this.prune(records)
     }, signal)
   }
@@ -122,6 +122,16 @@ export class LearningStore {
   }
   async change(scope: MemoryOperationScope, operation: string, input: RecordValue['data'], revision?: string, signal?: AbortSignal): Promise<RecordSnapshot> {
     return this.store.change(revision, records => {
+      if (['batch-approve', 'batch-reject', 'batch-archive'].includes(operation)) {
+        const ids = input.recordIds, versions = memoryInputRecord(input.versions ?? {}, 'proposal versions'), replacements = memoryInputRecord(input.supersededVersions ?? {}, 'replacement versions')
+        if (!Array.isArray(ids) || ids.length < 1 || ids.length > 50 || ids.some(id => typeof id !== 'string') || new Set(ids).size !== ids.length) throw new Error('Select between one and fifty unique proposals')
+        for (const id of ids as string[]) this.applyChange(records, scope, operation.slice(6), { id, version: versions[id] ?? null, supersededVersion: replacements[id] ?? null })
+        return
+      }
+      this.applyChange(records, scope, operation, input)
+    }, signal)
+  }
+  private applyChange(records: RecordValue[], scope: MemoryOperationScope, operation: string, input: RecordValue['data']): void {
       if (operation === 'configure') {
         const settings = memoryInputRecord(input.settings ?? {}, 'learning policy')
         if (Object.keys(settings).some(key => !['captureFeedback', 'captureOutcomes', 'autoAcceptFacts', 'autoAcceptPreferences', 'evidenceLimit'].includes(key))) throw new Error('Unknown learning policy setting')
@@ -135,11 +145,11 @@ export class LearningStore {
       if (operation === 'record-feedback') {
         const verdict = String(input.verdict)
         if (!['helpful', 'incorrect', 'outdated', 'irrelevant'].includes(verdict) || !['active', 'archived'].includes(record.state)) throw new Error('Feedback needs an adopted or transferred proposal')
-        const quote = redactLearningText(memoryInputText(input.quote, 'feedback', 2000)!)
+        const rawQuote = memoryInputText(input.quote, 'feedback', 2000)!, quote = redactLearningText(rawQuote)
         const key = memoryInputText(input.eventKey, 'feedback event', 100)!
         if (records.some(r => r.kind === 'assessment' && r.data.eventKey === key)) return
         records.push(newRecord('assessment', verdict, quote, record.scope, scope, { proposalId: record.id, verdict, eventKey: key, actor: 'operator' }))
-        if (scope.sessionId) { const cycle = cycleFor(records, scope); reviseRecord(cycle, 'explicit-feedback'); cycle.data.feedback = Number(cycle.data.feedback ?? 0) + 1; records.push(newRecord('observation', 'Learning feedback', quote, 'session', scope, { eventKey: key, independentKey: key, origin: 'human-feedback', proposalId: record.id, verdict, exactQuote: true, round: Number(cycle.data.rounds) })) }
+        if (scope.sessionId) { const cycle = cycleFor(records, scope); reviseRecord(cycle, 'explicit-feedback'); cycle.data.feedback = Number(cycle.data.feedback ?? 0) + 1; records.push(newRecord('observation', 'Learning feedback', quote, 'session', scope, { eventKey: key, independentKey: key, origin: 'human-feedback', proposalId: record.id, verdict, exactQuote: quote === rawQuote, redacted: quote !== rawQuote, round: Number(cycle.data.rounds) })) }
         reviseRecord(record, 'human-feedback'); record.data[verdict === 'helpful' ? 'helpful' : 'concerns'] = Number(record.data[verdict === 'helpful' ? 'helpful' : 'concerns']) + 1
         if (verdict !== 'helpful') record.data.needsReview = true
         return
@@ -175,11 +185,11 @@ export class LearningStore {
       if (operation === 'archive') record.state = 'archived'
       if (operation === 'restore') record.state = 'pending'
       if (operation === 'resolve-feedback') { record.data.needsReview = false; record.data.feedbackResolution = redactLearningText(memoryInputText(input.reason, 'resolution', 2000)!) }
-    }, signal)
   }
+
   async operation(event: Readonly<MemoryOperationObservation>, ownSource: string, signal?: AbortSignal): Promise<void> {
     if (event.kind !== 'read' && event.kind !== 'mutation' && event.kind !== 'management') return
-    if (!event.recordIds.length) return
+    if (!event.recordIds.length || event.sourceInstanceKey === ownSource && event.kind !== 'read') return
     await this.store.change(undefined, records => {
       if (records.some(r => r.kind === 'effect' && r.data.eventKey === event.id)) return
       const linked = records.filter(record => {
@@ -189,10 +199,17 @@ export class LearningStore {
         return !!target && typeof target === 'object' && !Array.isArray(target) && target.sourceInstanceKey === event.sourceInstanceKey && event.recordIds.includes(String(target.recordId))
       })
       for (const record of linked) {
-        const read = event.kind === 'read', adopted = event.kind === 'management' && event.operation === 'approve'
+        const read = event.kind === 'read', adopted = event.kind === 'management' && ['approve', 'batch-approve'].includes(event.operation)
         reviseRecord(record, read ? 'context-read' : 'destination-operation')
         if (read) record.data.reads = Number(record.data.reads) + 1
         if (adopted) record.data.destinationState = 'active'
+        if (event.kind === 'management' && ['archive', 'batch-archive', 'reject', 'batch-reject', 'delete'].includes(event.operation)) record.data.destinationState = event.operation.includes('archive') ? 'archived' : event.operation.includes('reject') ? 'rejected' : 'deleted'
+        if (event.kind === 'management' && event.operation === 'restore') record.data.destinationState = 'active'
+        if (event.kind === 'management' && event.operation === 'update') record.data.needsReview = true
+        const destination = record.data.destination
+        const changed = destination && typeof destination === 'object' && !Array.isArray(destination) ? event.records?.find(item => item.id === destination.recordId) : undefined
+        if (changed?.state && ['active', 'pending', 'archived', 'rejected', 'deleted'].includes(changed.state)) record.data.destinationState = changed.state
+        if (changed?.revision) record.data.destinationRevision = changed.revision
         records.push(newRecord('effect', read ? 'Context read' : event.operation, '', record.scope, event.scope, { eventKey: event.id, proposalId: record.id, operation: event.operation, kind: event.kind, actor: event.actor, sourceInstanceKey: event.sourceInstanceKey, ...(event.completion ? { completion: event.completion } : {}), occurredAt: event.occurredAt }))
       }
       this.prune(records)

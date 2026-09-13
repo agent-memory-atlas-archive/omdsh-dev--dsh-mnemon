@@ -22,6 +22,8 @@ export interface RecordSourceOptions {
   defaultScope: RecordScope
   /** Opt into portable human export/import. Session state is never transferred. */
   transfer?: boolean
+  /** New versions stay pending; approval archives the exact reviewed original. */
+  reviewedRevisions?: boolean
   scopeForKind?: Readonly<Record<string, RecordScope>>
   modelWrites?: 'proposal' | 'append'
   /** Memory-only operations handled by mutate. Existing records must belong to the pinned View. */
@@ -38,6 +40,7 @@ export interface RecordSourceOptions {
 const writeSchema: MemoryJsonValue = { type: 'object', additionalProperties: false, required: ['title'], properties: {
   title: { type: 'string', maxLength: 300 }, content: { type: 'string', maxLength: 100000 }, kind: { type: 'string' },
   scope: { type: 'string', enum: ['global', 'project', 'session', 'daily'] }, date: { type: 'string' }, data: { type: 'object' },
+  supersedes: { type: 'object', additionalProperties: false, required: ['id', 'version'], properties: { id: { type: 'string' }, version: { type: 'integer', minimum: 1 } } },
 } }
 const readSchema: MemoryJsonValue = { type: 'object', additionalProperties: false, properties: {
   id: { type: 'string' }, query: { type: 'string' }, kind: { type: 'string' }, since: { type: 'string' }, until: { type: 'string' },
@@ -54,11 +57,12 @@ export function createRecordSource(options: RecordSourceOptions, config: RecordS
       capabilities: ['status', 'project', 'recall', 'write', 'export', 'import'], consistency: 'exact-snapshot',
       management: { label: options.label, description: options.description },
       routes: [{ id: 'search', description: `Search and read ${options.label}.`, capability: 'recall', inputSchema: readSchema, maxCalls: 8, maxResults: 20, maxCharacters: 12_000 }],
-      actions: [{ id: modelAction, description: modelAction === 'append' ? `Append a new ${options.label} record; existing records are preserved.` : `Propose a ${options.label} record for human approval; it stays inactive until approved.`, capability: 'write', inputSchema: writeSchema }, ...options.modelActions ?? []],
+      actions: [{ id: modelAction, description: modelAction === 'append' ? `Append a new ${options.label} record; existing records are preserved.` : `Propose a ${options.label} record for human approval; it stays inactive until approved.${options.reviewedRevisions ? ' To refine an existing record, read its full content first, then supply supersedes with its exact id and version. The original remains active until the revision is approved.' : ''}`, capability: 'write', inputSchema: writeSchema }, ...options.modelActions ?? []],
     },
     create(context) {
       const store = new RecordStore(sourceRecordDirectory(options.typeId, context, config))
       const prepared = new WeakMap<object, RecordSnapshot>()
+      const inspections = new Map<string, Map<string, number>>()
       // Bounded opaque snapshots keep large collections out of Core's JSON grants.
       // Eviction fails closed; it never substitutes a newer collection for an old View.
       const snapshots = new Map<string, RecordValue[]>()
@@ -91,13 +95,44 @@ export function createRecordSource(options: RecordSourceOptions, config: RecordS
         const selectedScope = (options.scopeForKind?.[kind] ?? memoryInputText(input.scope, 'scope', 20, false) ?? options.defaultScope) as RecordScope
         if (!options.kinds.includes(kind) || !options.scopes.includes(selectedScope)) throw new Error('Unsupported record kind or scope')
         const data = input.data === undefined ? {} : memoryInputRecord(input.data, 'record data')
+        if (Object.keys(data).some(key => ['mnemonTransfer', 'mnemonSupersedes', 'mnemonSupersededBy'].includes(key))) throw new Error('Transfer and revision identities are reserved for reviewed handoffs')
         const now = new Date().toISOString()
         return { id: randomUUID(), kind, title: memoryInputText(input.title, 'title', 300)!, content: memoryInputText(input.content, 'content', 100_000, false) ?? '',
           ...recordScope(selectedScope, scope, memoryInputText(input.date, 'date', 10, false)), state, data: structuredClone(data),
           signals: 1, createdAt: now, updatedAt: now, version: 1, history: [] }
       }
-      async function change(operation: string, input: { [key: string]: MemoryJsonValue }, scope: MemoryOperationScope, revision?: string, signal?: AbortSignal, modelRecords?: RecordValue[]): Promise<RecordSnapshot> {
+      async function change(operation: string, input: { [key: string]: MemoryJsonValue }, scope: MemoryOperationScope, revision?: string, signal?: AbortSignal, modelRecords?: RecordValue[], readRecords?: Map<string, number>): Promise<RecordSnapshot> {
         return store.change(revision, async records => {
+          const attachRevision = (item: RecordValue) => {
+            if (input.supersedes === undefined) return
+            if (!options.reviewedRevisions || !['propose', 'receive-proposal'].includes(operation)) throw new Error('This Source does not accept reviewed revisions here')
+            const reference = memoryInputRecord(input.supersedes, 'revision reference')
+            const original = records.find(record => record.id === reference.id && record.state === 'active' && visibleRecord(record, scope))
+            if (!original || original.version !== reference.version || original.scope !== item.scope || original.kind !== item.kind) throw new Error('The original record changed or is outside the proposal scope')
+            if (modelRecords && (!modelRecords.some(record => record.id === original.id && record.version === original.version) || readRecords?.get(original.id) !== original.version)) throw new Error('Read the full original in this View before proposing a revision')
+            item.data.mnemonSupersedes = { id: original.id, version: original.version }
+          }
+          const approveRevision = (record: RecordValue, version: MemoryJsonValue | undefined) => {
+            if (!record.data.mnemonSupersedes) return
+            const reference = memoryInputRecord(record.data.mnemonSupersedes, 'revision reference')
+            const original = records.find(item => item.id === reference.id && item.state === 'active' && visibleRecord(item, scope) && item.scope === record.scope && item.kind === record.kind)
+            if (!original || original.version !== reference.version || version !== original.version) throw new Error('Review the current original before adopting its revision')
+            reviseRecord(original, 'superseded'); original.state = 'archived'; original.data.mnemonSupersededBy = record.id
+          }
+          if (['batch-approve', 'batch-reject', 'batch-archive'].includes(operation)) {
+            const ids = input.recordIds, versions = memoryInputRecord(input.versions ?? {}, 'record versions'), replacements = memoryInputRecord(input.supersededVersions ?? {}, 'replacement versions')
+            if (!Array.isArray(ids) || !ids.length || ids.length > 50 || ids.some(id => typeof id !== 'string') || new Set(ids).size !== ids.length) throw new Error('Select between one and fifty unique records')
+            const action = operation.slice(6)
+            for (const id of ids as string[]) {
+              const record = records.find(record => record.id === id && visibleRecord(record, scope))
+              if (!record || versions[id] !== record.version) throw new Error('A selected record changed; refresh before reviewing')
+              if (action === 'archive' ? !['active', 'pending'].includes(record.state) : record.state !== 'pending') throw new Error('A selected record is not eligible for this review action')
+              if (action === 'approve') approveRevision(record, replacements[id])
+              reviseRecord(record, action); record.state = action === 'approve' ? 'active' : action === 'reject' ? 'rejected' : 'archived'
+              options.validate(record)
+            }
+            return
+          }
           if (modelRecords && operation !== modelAction) {
             const before = modelRecords.find(record => record.id === input.id && record.state === 'active')
             const current = records.find(record => record.id === input.id && visibleRecord(record, scope))
@@ -113,6 +148,7 @@ export function createRecordSource(options: RecordSourceOptions, config: RecordS
               if (!visibleRecord(previous, scope) || previous.scope !== item.scope || previous.kind !== item.kind || previous.title !== item.title || previous.content !== item.content) throw new Error('The transfer already exists with different content or scope; inspect its destination')
               return
             }
+            attachRevision(item)
             item.data.mnemonTransfer = transferKey
             records.push(item)
             return
@@ -122,6 +158,7 @@ export function createRecordSource(options: RecordSourceOptions, config: RecordS
             const item = create(input, scope, operation === 'propose' ? 'pending' : 'active')
             await options.prepare?.(item, scope)
             options.validate(item)
+            attachRevision(item)
             const duplicate = records.find(record => record.state === item.state && visibleRecord(record, scope) && record.scope === item.scope && record.date === item.date
               && record.kind === item.kind && record.title.trim().toLowerCase() === item.title.trim().toLowerCase() && record.content.trim() === item.content.trim()
               && digest(record.data) === digest(item.data))
@@ -163,13 +200,19 @@ export function createRecordSource(options: RecordSourceOptions, config: RecordS
             if (operation === 'approve' && record.state !== 'pending') throw new Error('Only pending records can be approved')
             if (operation === 'reject' && record.state !== 'pending') throw new Error('Only pending records can be rejected')
             if (operation === 'restore' && !['archived', 'deleted', 'rejected'].includes(record.state)) throw new Error('Record is not archived or removed')
+            if (operation === 'restore' && record.data.mnemonSupersededBy) throw new Error('Propose a reviewed revision of the current record to reuse this historical version')
+            if (operation === 'approve') approveRevision(record, input.supersededVersion)
             reviseRecord(record, operation)
             if (operation === 'update' || operation === 'approve') {
               if (input.title !== undefined) record.title = memoryInputText(input.title, 'title', 300)!
               if (input.content !== undefined) record.content = memoryInputText(input.content, 'content', 100_000, false) ?? ''
-              if (input.data !== undefined) record.data = structuredClone(memoryInputRecord(input.data, 'record data'))
+              if (input.data !== undefined) {
+                const next = memoryInputRecord(input.data, 'record data')
+                for (const key of ['mnemonTransfer', 'mnemonSupersedes', 'mnemonSupersededBy']) if (JSON.stringify(next[key]) !== JSON.stringify(record.data[key])) throw new Error('Transfer and revision identities cannot be edited')
+                record.data = structuredClone(next)
+              }
             }
-            if (operation !== 'update') record.state = operation === 'approve' || operation === 'restore' ? 'active' : operation === 'archive' ? 'archived' : operation === 'reject' ? 'rejected' : 'deleted'
+            if (operation !== 'update') record.state = operation === 'restore' && (record.data.mnemonSupersedes || record.data.mnemonSupersededBy) ? 'pending' : operation === 'approve' || operation === 'restore' ? 'active' : operation === 'archive' ? 'archived' : operation === 'reject' ? 'rejected' : 'deleted'
             options.validate(record)
             return
           }
@@ -221,6 +264,10 @@ export function createRecordSource(options: RecordSourceOptions, config: RecordS
             const body = `${record.title}\n${record.content}\n${JSON.stringify(record.data)}`
             if (remaining < 100) return []
             const text = truncateMemoryText(body, remaining)
+            if (options.reviewedRevisions && body.length <= remaining) {
+              const read = inspections.get(request.view.id) ?? new Map<string, number>(); read.set(record.id, record.version); inspections.set(request.view.id, read)
+              while (inspections.size > 128) inspections.delete(inspections.keys().next().value!)
+            }
             remaining -= text.length
             return [{ id: record.id, text, revision: String(record.version), provenance: json({ kind: record.kind, scope: record.scope, date: record.date, createdAt: record.createdAt, state: record.state }) }]
           })
@@ -243,22 +290,30 @@ export function createRecordSource(options: RecordSourceOptions, config: RecordS
             throw new Error('Unsupported management read: ' + request.operation)
           }
           if (!request.confirmed || request.expectedRevision === undefined) throw new Error('A confirmed, revision-fenced management request is required')
+          const before = await store.read(request.signal)
           const snapshot = await change(request.operation, input, request.scope, request.expectedRevision, request.signal)
           if (request.operation === 'transfer-import' && options.transfer) return { revision: snapshot.revision, value: json(exportRecordTrack(snapshot.records, String(memoryInputRecord(input.snapshot!, 'transfer snapshot').track), request.scope)) }
-          return { revision: snapshot.revision, value: json(managed(snapshot, request.scope)) }
+          return { revision: snapshot.revision, value: json(managed(snapshot, request.scope)), records: recordChanges(before, snapshot, request.scope) }
         },
         async mutate(request) {
           const operation = request.offer.sourceActionId
           if (operation !== modelAction && !options.modelActions?.some(action => action.id === operation)) throw new Error('Unsupported record action')
           const input = memoryInputRecord(request.input, 'record write')
-          if (operation !== modelAction && !request.grant) throw new Error('The action needs this Source\'s pinned read grant')
-          const snapshot = await change(operation, input, request.view.scope, undefined, request.signal, operation !== modelAction ? pinned(request.grant!.value) : undefined)
+          if ((operation !== modelAction || input.supersedes !== undefined) && !request.grant) throw new Error('The action needs this Source\'s pinned read grant')
+          const before = await store.read(request.signal)
+          const snapshot = await change(operation, input, request.view.scope, undefined, request.signal, operation !== modelAction || input.supersedes !== undefined ? pinned(request.grant!.value) : undefined, inspections.get(request.view.id))
           const affected = snapshot.records.filter(record => visibleRecord(record, request.view.scope) && (input.id ? record.id === input.id : record.title === input.title)).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
           return createMemoryMutationReceipt(request.view.id, request.offer.id, context.sourceInstanceKey, snapshot.revision,
-            { message: operation === 'propose' ? 'Saved for approval; not active context.' : 'Record saved.', pending: operation === 'propose', recordId: affected[0]?.id ?? null, version: affected[0]?.version ?? null }, operation === 'propose' ? 'candidate' : 'committed')
+            { records: json(recordChanges(before, snapshot, request.view.scope)), message: operation === 'propose' ? 'Saved for approval; not active context.' : 'Record saved.', pending: operation === 'propose', recordId: affected[0]?.id ?? null, version: affected[0]?.version ?? null }, operation === 'propose' ? 'candidate' : 'committed')
         },
-        dispose() { snapshots.clear(); snapshotBytes = 0 },
+        dispose() { snapshots.clear(); inspections.clear(); snapshotBytes = 0 },
       }
     },
   })
+}
+
+/** Changed metadata is Source-owned; record bodies never enter feedback events. */
+function recordChanges(before: RecordSnapshot, after: RecordSnapshot, scope: MemoryOperationScope) {
+  const versions = new Map(before.records.map(record => [record.id, record.version]))
+  return after.records.filter(record => visibleRecord(record, scope) && versions.get(record.id) !== record.version).map(record => ({ id: record.id, revision: String(record.version), state: record.state })).slice(0, 100)
 }

@@ -177,3 +177,43 @@ describe('scoped record Source', () => {
     expect((await store.read()).records).toHaveLength(1)
   })
 })
+
+it('requires a full model read before a revision and preserves the exact original until approval', async () => {
+  const { runner, scope } = await fixture({ reviewedRevisions: true })
+  try {
+    const client = await runner.managementClient('source:notes', scope)
+    let result = await client.mutate('create', { title: 'Release procedure', content: 'Check the published version.' }, { confirmed: true })
+    const original = (result.value as unknown as RecordSnapshot).records[0]!
+    const turn = await runner.beginTurn({ scope }), proposal = { title: 'Release procedure', content: 'Check the published version and verify its peer compatibility.', supersedes: { id: original.id, version: original.version } }
+    await expect(turn.executeAction(turn.view.actionOffers[0]!.id, proposal, () => true)).rejects.toThrow('Read the full original')
+    await turn.executeRoute(turn.view.routes[0]!.id, { id: original.id })
+    expect((await turn.executeAction(turn.view.actionOffers[0]!.id, proposal, () => true)).completion).toBe('candidate')
+    const snapshot = (await client.read('snapshot')).value as unknown as RecordSnapshot, candidate = snapshot.records.find(record => record.state === 'pending')!
+    expect(snapshot.records.find(record => record.id === original.id)).toMatchObject({ state: 'active', version: 1, content: original.content })
+    await expect(client.mutate('approve', { id: candidate.id, version: candidate.version }, { confirmed: true })).rejects.toThrow('current original')
+    result = await client.mutate('approve', { id: candidate.id, version: candidate.version, supersededVersion: original.version }, { confirmed: true })
+    expect((result.value as unknown as RecordSnapshot).records.find(record => record.id === original.id)).toMatchObject({ state: 'archived', data: { mnemonSupersededBy: candidate.id } })
+    expect(result.records).toEqual(expect.arrayContaining([{ id: original.id, state: 'archived', revision: '2' }, { id: candidate.id, state: 'active', revision: '2' }]))
+    await expect(client.mutate('restore', { id: original.id, version: 2 }, { confirmed: true })).rejects.toThrow('historical version')
+    turn.release()
+  } finally { await runner.dispose() }
+})
+it('applies a batch atomically and refuses changed or cross-scope selections', async () => {
+  const { runner, scope } = await fixture()
+  try {
+    const client = await runner.managementClient('source:notes', scope)
+    await client.mutate('propose', { title: 'First' }, { confirmed: true })
+    await client.mutate('propose', { title: 'Second' }, { confirmed: true })
+    const snapshot = (await client.read('snapshot')).value as unknown as RecordSnapshot
+    const input = { recordIds: snapshot.records.map(record => record.id), versions: Object.fromEntries(snapshot.records.map(record => [record.id, record.version])) }
+    input.versions[input.recordIds[1]!] = 99
+    await expect(client.mutate('batch-approve', input, { confirmed: true })).rejects.toThrow('changed')
+    expect(((await client.read('snapshot')).value as unknown as RecordSnapshot).records.every(record => record.state === 'pending')).toBe(true)
+    input.versions[input.recordIds[1]!] = 1
+    const other = await runner.managementClient('source:notes', { ...scope, workspaceId: '/another' })
+    await expect(other.mutate('batch-approve', input, { confirmed: true })).rejects.toThrow('changed')
+    const result = await client.mutate('batch-approve', input, { confirmed: true })
+    expect((result.value as unknown as RecordSnapshot).records.every(record => record.state === 'active')).toBe(true)
+    expect(result.records).toHaveLength(2)
+  } finally { await runner.dispose() }
+})

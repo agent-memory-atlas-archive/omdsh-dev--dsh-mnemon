@@ -608,3 +608,21 @@ describe('Composable View Memory compiler', () => {
     await generation.dispose()
   })
 })
+
+it('observes Source-owned implicit record changes and strips non-metadata fields', async () => {
+  const source = sourceDefinition(), observations: Readonly<MemoryOperationObservation>[] = []
+  const definition = { ...source, create(context: Parameters<typeof source.create>[0]) {
+    const runtime = source.create(context)
+    return { ...runtime, async manage(request: Parameters<NonNullable<typeof runtime.manage>>[0]) {
+      const value = await runtime.manage!(request)
+      return { ...value, records: [{ id: 'new-version', revision: '2', state: 'active', content: 'private record body' }, { id: 'old-version', revision: '7', state: 'archived' }] }
+    } }
+  } }
+  const generation = new MemoryCompositionGeneration(contributions(installedSource(definition)), { observeOperation: event => { observations.push(event) } })
+  try {
+    const result = await generation.executeManagement({ scope: REQUEST.scope, sourceInstanceKey: 'source:fixture', mode: 'mutate', operation: 'approve', input: { id: 'new-version' }, expectedRevision: 'source-r1', confirmed: true })
+    expect(result.records).toEqual([{ id: 'new-version', revision: '2', state: 'active' }, { id: 'old-version', revision: '7', state: 'archived' }])
+    expect(observations[0]?.recordIds).toEqual(['new-version', 'old-version'])
+    expect(JSON.stringify(observations)).not.toContain('private record body')
+  } finally { await generation.dispose() }
+})

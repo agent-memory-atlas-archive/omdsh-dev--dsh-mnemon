@@ -2,6 +2,7 @@ import { installMemorySourceUI, type MemorySourceUIContext } from 'dsh-mnemon/cl
 import { createCollectionPage } from 'dsh-mnemon-workspace-kit/client'
 export const inject = ['slots']
 export const Page = createCollectionPage({
+  reviewedRevisions: true,
   "title": {
     "en": "Project notes",
     "zh-CN": "项目笔记"

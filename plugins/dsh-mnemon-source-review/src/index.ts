@@ -25,7 +25,7 @@ const options: RecordSourceOptions = {
     if (record.kind === 'constraint' && record.content.length > 4000) throw new Error('Review constraints must be at most 4000 characters each')
   },
   project(records) {
-    return records.filter(record => record.kind === 'cycle').map(record => `Review cycle ${record.id}: ${record.data.due ? 'DUE: review and explicitly complete the cycle' : 'not due'}; ${String(record.data.rounds)} user rounds, last completed at ${String(record.data.completedRound)}. At most two durable proposals and one reusable skill. Candidates require approval.`).join('\n') + '\nLatest review: ' + records.filter(record => record.kind === 'review').slice(-1).map(record => record.title + ' · ' + String(record.data.severity ?? record.data.status)).join('')
+    return records.filter(record => record.kind === 'cycle').map(record => `Review cycle ${record.id}: ${record.data.due ? 'DUE: review and explicitly complete the cycle' : 'not due'}; ${String(record.data.rounds)} user rounds, last completed at ${String(record.data.completedRound)}. Read the independent reviewer findings before acknowledging completion; proposed improvements require approval.`).join('\n') + '\nLatest review: ' + records.filter(record => record.kind === 'review').slice(-1).map(record => record.title + ' · ' + String(record.data.severity ?? record.data.status)).join('')
   },
   modelActions: [{ id: 'complete-cycle', description: 'Explicitly complete a due review cycle after reviewing its findings and handling proposals.', capability: 'write', inputSchema: { type: 'object', required: ['id'], properties: { id: { type: 'string' } }, additionalProperties: false } }],
   mutate(operation, input, { records, scope }) {
@@ -56,7 +56,7 @@ export function createReviewSource(config: Config, port: ReviewPort, ctx?: Conte
     return { ...runtime,
       async facts(request, signal) {
         const facts = await runtime.facts(request, signal), records = (await engine.store.read(signal)).records.filter(record => record.kind === 'cycle' && visibleRecord(record, request.scope))
-        return { ...facts, hints: { ...memoryInputRecord(facts.hints ?? {}, 'review hints'), reviewDue: records.some(record => record.data.due === true) } }
+        return { ...facts, hints: { ...memoryInputRecord(facts.hints ?? {}, 'review hints'), reviewDue: records.some(record => record.data.enabled !== false && record.data.due === true), unreviewedHumanTurns: Math.max(0, ...records.filter(record => record.data.enabled !== false).map(record => Number(record.data.rounds) - Number(record.data.completedRound))) } }
       },
       async manage(request) {
         const input = memoryInputRecord(request.input ?? {}, 'review management')

@@ -52,8 +52,8 @@ it('supports a larger explicit budget without discarding later Source operations
     item.actions = Array.from({ length: 4 }, (_, index) => ({ ...item.actions[0]!, id: 'write-' + index }))
   }
   const result = WORKSPACE_STRATEGY.compose({ ...request, budget: { ...request.budget, maxRoutes: 96, maxActions: 96 } }, sources)
-  expect(result.sources.flatMap(source => source.routeIds ?? [])).toHaveLength(60)
-  expect(result.sources.flatMap(source => source.actionIds ?? [])).toHaveLength(60)
+  expect(result.sources.flatMap(source => source.routeIds ?? [])).toHaveLength(64)
+  expect(result.sources.flatMap(source => source.actionIds ?? [])).toHaveLength(64)
   const empty = WORKSPACE_STRATEGY.compose(request, sources, [{ instanceKey: 'strategy-extension:focus', typeId: 'focus', slot: 'focus', value: { sourceKeys: [], maxProjectionCharacters: 100 } }])
   expect(empty.sources).toEqual([])
 })

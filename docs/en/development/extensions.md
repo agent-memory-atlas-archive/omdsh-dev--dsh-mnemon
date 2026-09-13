@@ -223,6 +223,8 @@ Sources own entry validation, scope rebinding, idempotency, capacity and recover
 
 ### Optional operation observations
 
+Sources can return bounded `records: [{ id, revision, state }]` metadata with a management result, or in mutation receipt details. Include implicit changes such as an original archived by revision approval. Core forwards only these metadata fields; the state vocabulary belongs to the Source. Optional observer failures, including rejected promises, never invalidate the completed operation.
+
 `observeMemoryOperations(ctx, observer)` subscribes to Core-generated, immutable metadata after a successful dispatch. It is tied to the installing Fiber. Events contain scoped Source and operation identities, bounded record identifiers, and the actual mutation status/completion when available. They never contain inputs, prompts, record bodies or grants, and grant no execution authority. A read is exposure, not proof of use or helpfulness. Management completion does not imply a committed memory receipt. Observers should enqueue their own bounded persistence work and handle failures; they cannot invalidate an already completed operation. Keep domain interpretation and feedback policy in optional Source and Strategy plugins.
 
 Use `MemoryPluginSurface`, `MemoryPluginNotice`, `MemoryPluginMetrics` and `memoryPluginStyles` from `dsh-mnemon/client` for optional plugin pages. These browser-only primitives follow DSH semantic theme colors and accessible keyboard focus. They carry no Source execution authority. Strategy configuration fields also support `input: 'boolean'`; values are validated as booleans before the pure factory runs.

@@ -50,3 +50,15 @@ it('drops an old pending save and draft without resetting the new workspace', as
   expect(screen.queryByRole('textbox',{name:'Title'})).toBeNull();expect(screen.queryByRole('heading',{name:'Old saved'})).toBeNull()
   expect(screen.queryByRole('status')).toBeNull()
 })
+
+it('submits the exact selected versions in one batch without including hidden or unselected records', async () => {
+  const rows = [record('First'), record('Second')].map(value => ({ ...value, state: 'pending' }))
+  const read = vi.fn(async () => ({ revision: 'r1', value: { revision: 'r1', records: rows } }))
+  const mutate = vi.fn(async () => ({ revision: 'r2', value: { revision: 'r2', records: rows.map(value => ({ ...value, state: 'active', version: 2 })) } }))
+  const client = { sourceInstanceKey: 'source:notes', read, mutate } as unknown as MnemonSourceManagementClient
+  render(<Page {...props(client, '/project')} />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Needs review 2' }))
+  fireEvent.click(screen.getByLabelText('Select Second'))
+  fireEvent.click(screen.getByRole('button', { name: 'Approve selected' }))
+  await waitFor(() => expect(mutate).toHaveBeenCalledWith('batch-approve', { recordIds: ['Second'], versions: { Second: 1 }, supersededVersions: {} }, { confirmed: true, expectedRevision: 'r1' }))
+})

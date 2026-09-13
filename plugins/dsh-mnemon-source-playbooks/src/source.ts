@@ -2,7 +2,7 @@ import { reviseRecord, visibleRecord, type RecordSourceOptions } from 'dsh-mnemo
 import { memoryInputText } from 'dsh-mnemon/extension-sdk'
 import { filterLibrary } from './library.ts'
 export const sourceOptions: RecordSourceOptions = {
-  transfer: true,
+  transfer: true, reviewedRevisions: true,
   typeId: 'playbooks', role: 'instruction-library', label: 'Playbooks', description: 'Approved reusable skills and prompts with progressive disclosure.',
   kinds: ['skill', 'prompt', 'schedule'], scopes: ['global', 'project', 'session'], defaultScope: 'project',
   prepare(record) { if (record.kind === 'schedule') throw new Error('Use the session scheduling controls'); record.data.enabled ??= true; record.data.category ??= ''; record.data.uses ??= 0 },

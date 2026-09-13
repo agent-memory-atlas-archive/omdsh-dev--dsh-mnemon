@@ -4,6 +4,7 @@ import { installMemorySourceUI, type MemorySourcePageProps, type MemorySourceUIC
 import { createCollectionPage, RecordActionPanel, type RecordActionPanelOptions } from 'dsh-mnemon-workspace-kit/client'
 export const inject = ['slots']
 const LibraryPage = createCollectionPage({
+  reviewedRevisions: true,
   renderRecords: context => <LibraryViews {...context} />,
   "title": {
     "en": "Playbooks",

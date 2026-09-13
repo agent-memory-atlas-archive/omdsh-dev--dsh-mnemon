@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MemorySourcePageProps } from 'dsh-mnemon/client'
 import type { RecordSnapshot, RecordValue } from 'dsh-mnemon-workspace-kit'
 import { collectionStyles, managementError } from 'dsh-mnemon-workspace-kit/client'
@@ -11,9 +11,12 @@ export function Proposals(props: MemorySourcePageProps) {
     [library, setLibrary] = useState(''),
     [notice, setNotice] = useState(''),
     [busy, setBusy] = useState(false)
+  const epoch = useRef(0), pending = useRef(false)
+  useEffect(() => { epoch.current++; pending.current = false; setBusy(false); setRecords([]); setReviewId(''); setProject(''); setLibrary(''); setNotice(''); return () => { epoch.current++ } }, [props.management, props.managementDirectory, props.workspaceId, props.sessionId])
   const load = useCallback(async () => {
+    const generation = epoch.current
     const response = await props.management?.read('snapshot')
-    if (!response) return
+    if (!response || generation !== epoch.current) return
     const rows = (response.value as unknown as RecordSnapshot).records.filter(
       (record) => record.kind === 'review' && record.data.status === 'completed',
     )
@@ -31,13 +34,20 @@ export function Proposals(props: MemorySourcePageProps) {
       setNotice(zh ? '请选择对应的目标插件实例。' : 'Choose the destination Source instance.')
       return
     }
+    if (pending.current || !props.writable) return
+    const generation = epoch.current; pending.current = true
     setBusy(true)
     setNotice('')
     try {
       const snapshot = await target.read('snapshot')
+      if (generation !== epoch.current) return
+      const previous = (snapshot.value as unknown as RecordSnapshot).records.filter(record => record.state === 'active' && record.kind === kind && record.scope === 'project' && kind === 'skill' && record.data.slug === slug)
+      if (previous.length > 1) throw new Error('Multiple active skills share this name; choose the original in Playbooks before proposing a revision')
       await target.mutate(
-        'propose',
+        'receive-proposal',
         {
+          transferKey: `${props.sourceInstanceKey}:${reviewId}:${kind}:${slug ?? title}`,
+          ...(previous[0] ? { supersedes: { id: previous[0].id, version: previous[0].version } } : {}),
           kind,
           title,
           content,
@@ -46,6 +56,7 @@ export function Proposals(props: MemorySourcePageProps) {
         },
         { confirmed: true, expectedRevision: snapshot.revision },
       )
+      if (generation !== epoch.current) return
       setNotice(
         zh
           ? '已转为目标插件中的待审核建议，尚未生效。'
@@ -53,9 +64,9 @@ export function Proposals(props: MemorySourcePageProps) {
       )
       props.onRefresh?.()
     } catch (error) {
-      setNotice(managementError(error, zh))
+      if (generation === epoch.current) setNotice(managementError(error, zh))
     } finally {
-      setBusy(false)
+      if (generation === epoch.current) { pending.current = false; setBusy(false) }
     }
   }
   return (

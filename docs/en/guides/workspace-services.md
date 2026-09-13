@@ -20,6 +20,10 @@ Open **Settings → Memory System → Composition settings**. Choose the main St
 
 ## Capability map
 
+Project notes and Playbooks support reviewed revisions. Use **Propose revision** to edit a copy while the original remains active. Compare both versions in the pending queue before approval. Model revisions require a complete read of the exact original in the current View. Approval archives that original atomically; a changed original rejects the proposal until it is reviewed again. Batch approval, rejection and archiving accept up to 50 selected, version-fenced records and never apply only part of the selection.
+
+Learning and reviewer proposals use idempotent handoffs. An existing skill with the same reusable name receives a pending revision, preserving the active method until approval. Linked learning follows destination approval, rejection, archiving and implicit replacement. Conversation-review reminders and experience extraction have separate schedules; the independent reviewer controls its own execution interval.
+
 | Work | Owning component | Behavior |
 |---|---|---|
 | Preferences and working context | Runtime | Separate user profile, scope, revision history and explicit writes |
