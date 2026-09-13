@@ -23,6 +23,27 @@ async function fixture(overrides: Partial<RecordSourceOptions> = {}) {
 }
 
 describe('scoped record Source', () => {
+  it('receives a cross-plugin proposal once and refuses changed retries without overwriting the destination', async () => {
+    const { runner, scope } = await fixture()
+    try {
+      const client = await runner.managementClient('source:notes', scope)
+      const input = { transferKey: 'source:learning:candidate-1', title: 'Shared convention', content: 'Use published contracts', scope: 'project' }
+      await client.mutate('receive-proposal', input, { confirmed: true })
+      await client.mutate('receive-proposal', input, { confirmed: true })
+      let snapshot = (await client.read('snapshot')).value as unknown as RecordSnapshot
+      expect(snapshot.records).toHaveLength(1)
+      expect(snapshot.records[0]).toMatchObject({ state: 'pending', signals: 1 })
+      const record = snapshot.records[0]!
+      await client.mutate('approve', { id: record.id, version: record.version }, { confirmed: true })
+      await client.mutate('receive-proposal', input, { confirmed: true })
+      snapshot = (await client.read('snapshot')).value as unknown as RecordSnapshot
+      expect(snapshot.records[0]?.state).toBe('active')
+      await expect(client.mutate('receive-proposal', { ...input, content: 'Different' }, { confirmed: true })).rejects.toThrow('different content')
+      const other = await runner.managementClient('source:notes', { ...scope, workspaceId: '/other' })
+      await expect(other.mutate('receive-proposal', input, { confirmed: true })).rejects.toThrow('different content or scope')
+    } finally { await runner.dispose() }
+  })
+
   it('transfers portable records across workspace paths while retaining local revisions and rejecting authority fields', async () => {
     const { runner, scope, source } = await fixture({ transfer: true })
     try {

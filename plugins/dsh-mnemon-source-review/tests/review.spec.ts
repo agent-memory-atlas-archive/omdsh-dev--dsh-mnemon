@@ -3,11 +3,26 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
 import { RecordStore, newRecord } from 'dsh-mnemon-workspace-kit'
-import { countReviewRound, parseReview, ReviewEngine, type ReviewPort } from '../src/engine.ts'
+import { countReviewRound, completeReviewCycle, parseReview, ReviewEngine, type ReviewPort } from '../src/engine.ts'
 const scope = { storage: 'custom' as const, workspaceId: '/project', sessionId: 'session' }
 const answer = JSON.stringify({ severity: 'concern', summary: 'Check the claimed outcome', issues: [{ severity: 'concern', text: 'No visible test result is supplied.' }], proposals: [] })
 async function until(check: () => Promise<boolean>) { for (let n=0;n<100;n++) { if (await check()) return; await new Promise(resolve=>setTimeout(resolve,10)) } throw new Error('Review did not settle') }
 describe('independent conversation review', () => {
+  it('cannot complete without a successful review and retains later unreviewed rounds', async () => {
+    const store = new RecordStore(await mkdtemp(join(tmpdir(), 'mnemon-review-completion-')))
+    for (let turn = 1; turn <= 4; turn++) await countReviewRound(store, scope, turn, 2)
+    let snapshot = await store.read(), cycle = snapshot.records.find(record => record.kind === 'cycle')!
+    await expect(store.change(undefined, records => completeReviewCycle(records, scope, cycle.id))).rejects.toThrow('Run the independent review')
+    await store.change(undefined, records => {
+      const review = newRecord('review', 'Completed review', 'Visible evidence', 'session', scope, { status: 'completed', throughRound: 2 })
+      records.push(review); records.find(record => record.id === cycle.id)!.data.lastReviewId = review.id
+      completeReviewCycle(records, scope, cycle.id)
+    })
+    snapshot = await store.read(); cycle = snapshot.records.find(record => record.kind === 'cycle')!
+    expect(cycle.data).toMatchObject({ rounds: 4, completedRound: 2, due: true })
+    await expect(store.change(undefined, records => completeReviewCycle(records, scope, cycle.id))).rejects.toThrow('Run the independent review')
+  })
+
   it('keeps due state through further user rounds and fences replay', async () => {
     const store = new RecordStore(await mkdtemp(join(tmpdir(), 'mnemon-review-cycle-')))
     await countReviewRound(store, scope, 1, 2); await countReviewRound(store, scope, 1, 2); await countReviewRound(store, scope, 2, 2); await countReviewRound(store, scope, 3, 2)

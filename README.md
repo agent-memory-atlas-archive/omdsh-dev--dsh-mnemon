@@ -102,9 +102,11 @@ The workspace composition adds these independent plugins:
 | [dsh-mnemon-source-agent-jobs](plugins/dsh-mnemon-source-agent-jobs/README.md) | Reviewed CLI plans, background runs and durable logs | Off |
 | [dsh-mnemon-source-review](plugins/dsh-mnemon-source-review/README.md) | Independent conversation reviews and layered constraints | Off |
 | [dsh-mnemon-source-notifications](plugins/dsh-mnemon-source-notifications/README.md) | Personal inbox, registered attachments and channel receipts | Off |
+| [dsh-mnemon-source-learning](plugins/dsh-mnemon-source-learning/README.md) | Evidence-backed proposals, learning history and outcome feedback | Off |
 | [dsh-mnemon-source-canvas](plugins/dsh-mnemon-source-canvas/README.md) | Scoped notes, live file references and a spatial media board | Off |
 | [dsh-mnemon-source-sync](plugins/dsh-mnemon-source-sync/README.md) | Reviewed snapshots, cross-device merge and explicit Git push | Off |
 | [dsh-mnemon-strategy-focus](plugins/dsh-mnemon-strategy-focus/README.md) | Source selection, writable subsets and a context budget | Off |
+| [dsh-mnemon-strategy-learning-cycle](plugins/dsh-mnemon-strategy-learning-cycle/README.md) | Review learning by human turns, feedback and outcome thresholds | Off |
 | [dsh-mnemon-strategy-workspace](plugins/dsh-mnemon-strategy-workspace/README.md) | Compose available workspace Sources into one View | Off |
 | [dsh-mnemon-strategy-journal-capture](plugins/dsh-mnemon-strategy-journal-capture/README.md) | Guidance for deliberate, attributed capture | Off |
 | [dsh-mnemon-strategy-prompt-schedule](plugins/dsh-mnemon-strategy-prompt-schedule/README.md) | Policy for scheduled prompt use | Off |

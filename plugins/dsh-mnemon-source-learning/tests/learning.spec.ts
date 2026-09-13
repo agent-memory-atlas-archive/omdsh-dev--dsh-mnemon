@@ -1,0 +1,125 @@
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, expect, it } from 'vitest'
+import type { MemoryOperationScope } from 'dsh-mnemon/contracts'
+import { LearningStore, learningWindow, parseLearningReview, type LearningConfig, type LearningProposal } from '../src/learning.ts'
+import { boundedLearningWindow, LearningRunner, reviewPrompt } from '../src/runner.ts'
+const dirs: string[] = []
+afterEach(async () => { for (const dir of dirs.splice(0)) await rm(dir, { recursive: true, force: true }) })
+const scope: MemoryOperationScope = { storage: 'custom', workspaceId: '/workspace', sessionId: 'session-a' }
+async function fixture(config: LearningConfig = {}) { const directory = await mkdtemp(join(tmpdir(), 'mnemon-learning-')); dirs.push(directory); return new LearningStore(directory, config) }
+async function human(store: LearningStore, turn: number, content = 'Prefer concise responses', selected = scope) { await store.observe(selected, { eventKey: `${selected.sessionId}:${turn}`, independentKey: `${selected.sessionId}:${turn}`, origin: 'human-turn', title: `Turn ${turn}`, content }) }
+async function review(store: LearningStore, category: LearningProposal['category'] = 'preference', content = 'Prefer concise responses') {
+  const window = learningWindow(await store.store.read(), scope)!
+  return store.complete(scope, { token: window.token, summary: 'Reviewed explicit evidence.', proposals: [{ category, title: 'Response style', content, scope: category === 'preference' ? 'global' : 'project', evidenceIds: window.evidence.map(record => record.id), ...(category === 'procedure' ? { slug: 'check-results' } : {}) }] }, window)
+}
+it('counts independent human turns, deduplicates retries and redacts credentials before storage', async () => {
+  const store = await fixture()
+  await human(store, 1, 'Use key sk-abcdefghijklmnopqrstuvwxyz123456')
+  await human(store, 1, 'Use key sk-abcdefghijklmnopqrstuvwxyz123456')
+  await store.observe(scope, { eventKey: 'outcome-1', independentKey: 'session-a:1', origin: 'task-outcome', title: 'Reported outcome', content: 'Completed by assistant' })
+  const snapshot = await store.store.read()
+  expect(snapshot.records.filter(r => r.kind === 'observation')).toHaveLength(2)
+  expect(snapshot.records.find(r => r.kind === 'cycle')?.data.rounds).toBe(1)
+  expect(JSON.stringify(snapshot)).not.toContain('abcdefghijklmnopqrstuvwxyz123456')
+  expect(snapshot.records.find(r => r.kind === 'observation')?.data.redacted).toBe(true)
+  await review(store)
+  expect((await store.store.read()).records.find(r => r.kind === 'proposal')?.signals).toBe(1)
+})
+it('requires two independent human observations for stable preferences and merges repeated proposals', async () => {
+  const store = await fixture(); await human(store, 1); await review(store)
+  let candidate = (await store.store.read()).records.find(r => r.kind === 'proposal')!
+  await expect(store.change(scope, 'approve', { id: candidate.id, version: candidate.version })).rejects.toThrow('two independent')
+  await human(store, 2); await review(store)
+  const records = (await store.store.read()).records
+  expect(records.filter(r => r.kind === 'proposal')).toHaveLength(1)
+  candidate = records.find(r => r.kind === 'proposal')!
+  expect(candidate.signals).toBe(2)
+  const adopted = await store.change(scope, 'approve', { id: candidate.id, version: candidate.version })
+  expect(adopted.records.find(r => r.id === candidate.id)?.state).toBe('active')
+  const reopened = new LearningStore(store.store.directory)
+  expect((await reopened.store.read()).records.find(r => r.id === candidate.id)?.data.humanKeys).toHaveLength(2)
+})
+it('leaves new rounds outstanding when a review finishes and replays the same token without duplicates', async () => {
+  const store = await fixture(); await human(store, 1)
+  const window = learningWindow(await store.store.read(), scope)!, result = { token: window.token, summary: 'No durable conclusion yet.', proposals: [] }
+  await human(store, 2); await store.complete(scope, result, window); await store.complete(scope, result, window)
+  const records = (await store.store.read()).records
+  expect(records.filter(r => r.kind === 'run')).toHaveLength(1)
+  expect(records.find(r => r.kind === 'cycle')?.data).toMatchObject({ rounds: 2, completedRound: 1, reviews: 1 })
+})
+it('rejects unknown or cross-session evidence atomically without completing the cycle', async () => {
+  const store = await fixture(); await human(store, 1); await human(store, 1, 'Unrelated', { ...scope, sessionId: 'other' })
+  const snapshot = await store.store.read(), window = learningWindow(snapshot, scope)!, alien = snapshot.records.find(r => r.kind === 'observation' && r.sessionId === 'other')!
+  await expect(store.complete(scope, { token: window.token, summary: 'Invalid review', proposals: [{ category: 'fact', scope: 'project', title: 'Invalid', content: 'Not visible', evidenceIds: [alien.id] }] }, window)).rejects.toThrow('not inspected')
+  expect((await store.store.read()).revision).toBe(snapshot.revision)
+  await expect(store.complete(scope, { token: 'wrong', summary: 'Mismatch', proposals: [] }, window)).rejects.toThrow('token')
+})
+it('distinguishes read exposure from helpfulness and returns negative feedback to review evidence', async () => {
+  const store = await fixture(); await human(store, 1); await review(store, 'fact')
+  let snapshot = await store.store.read(), candidate = snapshot.records.find(r => r.kind === 'proposal')!
+  snapshot = await store.change(scope, 'approve', { id: candidate.id, version: candidate.version }); candidate = snapshot.records.find(r => r.id === candidate.id)!
+  const event = { id: 'read-1', occurredAt: new Date().toISOString(), scope, sourceInstanceKey: 'source:learning', sourceTypeId: 'learning', operation: 'search', kind: 'read' as const, actor: 'model' as const, recordIds: [candidate.id] }
+  await store.operation(event, 'source:learning'); await store.operation(event, 'source:learning')
+  snapshot = await store.store.read(); candidate = snapshot.records.find(r => r.id === candidate.id)!
+  expect(candidate.data).toMatchObject({ reads: 1, uses: 0, helpful: 0 })
+  await store.change(scope, 'record-feedback', { id: candidate.id, version: candidate.version, verdict: 'incorrect', quote: 'This assumption was wrong for the deployment.', eventKey: 'feedback-1' })
+  snapshot = await store.store.read(); candidate = snapshot.records.find(r => r.id === candidate.id)!
+  expect(candidate).toMatchObject({ state: 'active', data: { concerns: 1, helpful: 0, needsReview: true } })
+  expect(learningWindow(snapshot, scope)?.evidence.some(r => r.data.proposalId === candidate.id && r.data.origin === 'human-feedback')).toBe(true)
+  await store.change(scope, 'resolve-feedback', { id: candidate.id, version: candidate.version, reason: 'Archived separately after checking the deployment evidence.' })
+  expect((await store.store.read()).records.find(r => r.id === candidate.id)?.data.needsReview).toBe(false)
+})
+it('only automatically adopts eligible opted-in learning and never resurrects rejected suggestions', async () => {
+  const store = await fixture({ autoAcceptFacts: true, autoAcceptPreferences: true })
+  await human(store, 1); await review(store, 'fact')
+  let candidate = (await store.store.read()).records.find(r => r.kind === 'proposal')!
+  expect(candidate.state).toBe('pending')
+  await store.change(scope, 'reject', { id: candidate.id, version: candidate.version })
+  await human(store, 2); await review(store, 'fact')
+  candidate = (await store.store.read()).records.find(r => r.kind === 'proposal')!
+  expect(candidate).toMatchObject({ signals: 2, state: 'rejected' })
+  await human(store, 3); await review(store, 'preference', 'Keep responses brief')
+  expect((await store.store.read()).records.find(r => r.data.category === 'preference')?.state).toBe('active')
+})
+it('tracks an exported proposal without duplicating active local memory', async () => {
+  const store = await fixture(); await human(store, 1); await review(store, 'fact')
+  let candidate = (await store.store.read()).records.find(r => r.kind === 'proposal')!
+  await store.change(scope, 'link-destination', { id: candidate.id, version: candidate.version, sourceInstanceKey: 'source:notes', learningSourceInstanceKey: 'source:learning', recordId: 'remote-record', destinationState: 'pending' })
+  candidate = (await store.store.read()).records.find(r => r.id === candidate.id)!
+  expect(candidate.state).toBe('archived'); expect(candidate.data.destinationState).toBe('pending')
+  await store.operation({ id: 'approval', occurredAt: new Date().toISOString(), scope, sourceInstanceKey: 'source:notes', sourceTypeId: 'project-context', operation: 'approve', kind: 'management', actor: 'operator', recordIds: ['remote-record'] }, 'source:learning')
+  expect((await store.store.read()).records.find(r => r.id === candidate.id)?.data.destinationState).toBe('active')
+})
+it('preserves due state when a real completion port fails or returns invalid JSON', async () => {
+  const store = await fixture(); await human(store, 1)
+  const runner = new LearningRunner(store, { complete: async () => 'Not valid JSON' })
+  try {
+    await runner.queue(scope, (await store.store.read()).revision); await runner.idle()
+    const records = (await store.store.read()).records
+    expect(records.find(r => r.kind === 'cycle')?.data).toMatchObject({ completedRound: 0, status: 'failed' })
+    expect(records.filter(r => r.kind === 'run' || r.kind === 'proposal')).toHaveLength(0)
+    expect(records.filter(r => r.kind === 'failure')).toHaveLength(1)
+  } finally { await runner.dispose() }
+})
+it('bounds model evidence with explicit excerpts and enforces proposal limits and credential exclusion', async () => {
+  const store = await fixture(); for (let i = 1; i <= 10; i++) await human(store, i, 'long content '.repeat(500))
+  const window = boundedLearningWindow(learningWindow(await store.store.read(), scope)!, 10_000)
+  expect(reviewPrompt(window).length).toBeLessThanOrEqual(10_000); expect(window.evidence.length).toBeGreaterThanOrEqual(2)
+  expect(reviewPrompt(window)).toContain('"excerpt":true')
+  expect(() => parseLearningReview({ token: 't', summary: 'review', proposals: Array(4).fill({}) })).toThrow('at most')
+  expect(() => parseLearningReview({ token: 't', summary: 'review', proposals: [{ category: 'fact', scope: 'project', title: 'Secret', content: 'sk-abcdefghijklmnopqrstuvwxyz123456', evidenceIds: ['one'] }] })).toThrow('Credentials')
+})
+
+it('persists policy choices and reviews feedback without inventing another human turn', async () => {
+  const store = await fixture(); await human(store, 1); await review(store, 'fact')
+  let snapshot = await store.store.read(), candidate = snapshot.records.find(r => r.kind === 'proposal')!
+  snapshot = await store.change(scope, 'approve', { id: candidate.id, version: candidate.version }); candidate = snapshot.records.find(r => r.id === candidate.id)!
+  await store.change(scope, 'record-feedback', { id: candidate.id, version: candidate.version, verdict: 'helpful', quote: 'This convention helped the review.', eventKey: 'explicit-feedback' })
+  const runner = new LearningRunner(store, { complete: async (_scope, window) => JSON.stringify({ token: window.token, summary: 'Reviewed the explicit feedback.', proposals: [] }) })
+  try { await runner.queue(scope, (await store.store.read()).revision); await runner.idle() } finally { await runner.dispose() }
+  expect((await store.store.read()).records.find(r => r.kind === 'cycle')?.data).toMatchObject({ rounds: 1, completedRound: 1, feedback: 1, completedFeedback: 1 })
+  await store.change(scope, 'configure', { settings: { captureFeedback: false, autoAcceptFacts: true } })
+  expect(await new LearningStore(store.store.directory).policy()).toMatchObject({ captureFeedback: false, autoAcceptFacts: true, autoAcceptPreferences: false })
+})

@@ -103,7 +103,22 @@ export function createRecordSource(options: RecordSourceOptions, config: RecordS
             const current = records.find(record => record.id === input.id && visibleRecord(record, scope))
             if (!before || !current || current.version !== before.version) throw new Error('Record is not active in this View or has changed; read it in a new View')
           }
+          if (operation === 'receive-proposal') {
+            const transferKey = memoryInputText(input.transferKey, 'transfer key', 500)!
+            const item = create(input, scope, 'pending')
+            await options.prepare?.(item, scope)
+            options.validate(item)
+            const previous = records.find(record => record.data.mnemonTransfer === transferKey)
+            if (previous) {
+              if (!visibleRecord(previous, scope) || previous.scope !== item.scope || previous.kind !== item.kind || previous.title !== item.title || previous.content !== item.content) throw new Error('The transfer already exists with different content or scope; inspect its destination')
+              return
+            }
+            item.data.mnemonTransfer = transferKey
+            records.push(item)
+            return
+          }
           if (['create', 'propose', 'append'].includes(operation)) {
+            if (input.data && typeof input.data === 'object' && !Array.isArray(input.data) && Object.hasOwn(input.data, 'mnemonTransfer')) throw new Error('Transfer identity is reserved for confirmed handoffs')
             const item = create(input, scope, operation === 'propose' ? 'pending' : 'active')
             await options.prepare?.(item, scope)
             options.validate(item)

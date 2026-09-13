@@ -7,6 +7,7 @@ export interface ReviewResult { severity: typeof severities[number]; summary: st
 export interface ReviewPort {
   transcript(scope: MemoryOperationScope, signal: AbortSignal): Promise<{ messages: VisibleMessage[]; truncated: boolean }>
   complete(input: { scope: MemoryOperationScope; reviewerId: string; prompt: string; history: Array<{ prompt: string; answer: string }>; signal: AbortSignal }): Promise<string>
+  completed?(scope: MemoryOperationScope, reviewId: string, result: ReviewResult): void
   deliver?(scope: MemoryOperationScope, text: string, signal: AbortSignal): Promise<void>
 }
 export function parseReview(text: string): ReviewResult {
@@ -26,6 +27,13 @@ export async function countReviewRound(store: RecordStore, scope: MemoryOperatio
     reviseRecord(cycle, 'user-round'); cycle.data.lastTurn = turn; cycle.data.rounds = Number(cycle.data.rounds) + 1
     if (Number(cycle.data.rounds) - Number(cycle.data.completedRound) >= Number(cycle.data.interval)) cycle.data.due = true
   }, signal)
+}
+export function completeReviewCycle(records: RecordValue[], scope: MemoryOperationScope, id: string): void {
+  const cycle = records.find(record => record.id === id && record.kind === 'cycle' && visibleRecord(record, scope))
+  const review = records.find(record => record.id === cycle?.data.lastReviewId && record.kind === 'review' && record.data.status === 'completed' && visibleRecord(record, scope))
+  const throughRound = Number(review?.data.throughRound ?? -1)
+  if (!cycle || !review || throughRound <= Number(cycle.data.completedRound)) throw new Error('Run the independent review before completing this cycle')
+  reviseRecord(cycle, 'complete-cycle'); cycle.data.completedRound = Math.min(Number(cycle.data.rounds), throughRound); cycle.data.due = Number(cycle.data.rounds) - Number(cycle.data.completedRound) >= Number(cycle.data.interval)
 }
 export class ReviewEngine {
   readonly store: RecordStore
@@ -71,12 +79,15 @@ export class ReviewEngine {
       const history = snapshot.records.filter(record => record.kind === 'review' && record.data.reviewerId === cycle.data.reviewerId && visibleRecord(record, scope) && record.data.status === 'completed').slice(-4).map(record => ({ prompt: String(record.data.question ?? '').slice(0, 2000), answer: record.content.slice(0, 4000) }))
       raw = await this.port.complete({ scope, reviewerId: String(cycle.data.reviewerId), prompt, history, signal }); signal.throwIfAborted()
       const result = parseReview(raw)
+      let completedReviewId = ''
       await this.store.change(undefined, records => {
         const current = records.find(record => record.id === cycle.id)!
         if (current.data.runId !== id || current.data.reviewerId !== cycle.data.reviewerId) throw new Error('Review was reset before its result arrived')
-        const review = newRecord('review', result.summary.slice(0, 150) || 'Conversation review', result.summary + '\n' + result.issues.map(issue => `[${issue.severity}] ${issue.text}`).join('\n'), 'session', scope, { status: 'completed', reviewerId: String(cycle.data.reviewerId), runId: id, severity: result.severity, result: JSON.parse(JSON.stringify(result)) as MemoryJsonValue, question, raw: raw.slice(0, 20000), transcriptDigest: digest(lines), transcriptLastSeq: transcript.messages.at(-1)?.seq ?? 0, truncated: transcript.truncated })
-        records.push(review); reviseRecord(current, 'review-completed'); current.data.status = 'idle'; current.data.lastReviewId = review.id
+        const review = newRecord('review', result.summary.slice(0, 150) || 'Conversation review', result.summary + '\n' + result.issues.map(issue => `[${issue.severity}] ${issue.text}`).join('\n'), 'session', scope, { status: 'completed', throughRound: Number(cycle.data.rounds), reviewerId: String(cycle.data.reviewerId), runId: id, severity: result.severity, result: JSON.parse(JSON.stringify(result)) as MemoryJsonValue, question, raw: raw.slice(0, 20000), transcriptDigest: digest(lines), transcriptLastSeq: transcript.messages.at(-1)?.seq ?? 0, truncated: transcript.truncated })
+        records.push(review); completedReviewId = review.id; reviseRecord(current, 'review-completed'); current.data.status = 'idle'; current.data.lastReviewId = review.id
       }, signal)
+      // Optional observers cannot invalidate a persisted review.
+      try { this.port.completed?.(scope, completedReviewId, result) } catch {}
       if (cycle.data.notify !== false && this.port.deliver) await this.port.deliver(scope, `Conversation reviewer · ${result.severity}\n${result.summary}\n${result.issues.map(issue => `[${issue.severity}] ${issue.text}`).join('\n')}\nReview ${id}. Suggestions require explicit approval.`, signal)
     } catch (error) {
       try { await this.store.change(undefined, records => {

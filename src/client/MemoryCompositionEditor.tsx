@@ -51,7 +51,7 @@ function Field(props: { field: MemoryStrategyConfigurationField; value: MemoryJs
             <Button type="button" size="sm" disabled={props.disabled || index === list.length - 1} aria-label={t('Move down ', '下移 ') + key} onClick={() => { const next = [...list]; [next[index + 1], next[index]] = [next[index]!, next[index + 1]!]; props.onChange(next) }}><IconChevronDownOutline14 /></Button>
           </li>)}</ol>}
         </>)}
-    </> : field.input === 'textarea'
+    </> : field.input === 'boolean' ? <Toggle label={label} checked={(value ?? field.defaultValue) === true} disabled={props.disabled} onChange={props.onChange} /> : field.input === 'textarea'
       ? <textarea aria-label={label} value={String(value ?? field.defaultValue ?? '')} maxLength={field.maximum ?? 4000} onChange={event => props.onChange(event.target.value)} />
       : <input className={field.input === 'number' ? css.numberInput : css.textInput} aria-label={label} type={field.input === 'number' ? 'number' : 'text'} value={String(value ?? field.defaultValue ?? '')} {...(field.minimum === undefined ? {} : { min: field.minimum })} {...(field.maximum === undefined ? {} : { max: field.maximum, maxLength: field.maximum })} onChange={event => props.onChange(field.input === 'number' ? event.target.value === '' ? undefined : Number(event.target.value) : event.target.value)} />}
     {value !== undefined && <Button className={css.reset} type="button" size="sm" aria-label={t('Use default', '恢复默认') + ' · ' + label} onClick={() => props.onChange(undefined)}>{t('Use default', '恢复默认')}</Button>}

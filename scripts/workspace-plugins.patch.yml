@@ -42,3 +42,11 @@
   disabled: false
   config:
     allowLocalRemotes: true
+- id: mnemon-source-learning
+  disabled: false
+- id: mnemon-strategy-learning-cycle
+  disabled: false
+- id: mnemon-source-agent-jobs
+  disabled: false
+- id: mnemon-source-notifications
+  disabled: false

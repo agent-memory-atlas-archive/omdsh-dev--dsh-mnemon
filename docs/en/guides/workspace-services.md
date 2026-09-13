@@ -2,11 +2,11 @@
 
 [简体中文](../../zh-CN/guides/workspace-services.md)
 
-The optional workspace composition combines 15 Sources: the existing Runtime, Documents and Memory Spaces, plus 12 independently installable workspace Sources. The Starter installs their packages with optional entries disabled. Enable the Sources you need and select `workspace` explicitly. The existing three-tier composition remains the default.
+The optional workspace composition combines 16 Sources: the existing Runtime, Documents and Memory Spaces, plus 13 independently installable workspace Sources. The Starter installs their packages with optional entries disabled. Enable the Sources you need and select `workspace` explicitly. The existing three-tier composition remains the default.
 
 ## Ownership and composition
 
-A Source owns its store, revisions, proposals, queries, mutations, lifecycle and management UI. Memory Spaces owns its Provider children. Workspace is a complete Strategy that selects public Source capabilities and budgets a single View. Its five independent enhancements are Journal capture, Review cycle, Prompt schedule, Team coordination and Focus. Enhancements contribute pure policies through `dsh-mnemon-strategy-workspace/extension-sdk`; they cannot run commands, write files, send messages or borrow another Source's authority.
+A Source owns its store, revisions, proposals, queries, mutations, lifecycle and management UI. Memory Spaces owns its Provider children. Workspace is a complete Strategy that selects public Source capabilities and budgets a single View. Its six independent enhancements are Journal capture, Review cycle, Prompt schedule, Team coordination, Focus and Learning cycle. Enhancements contribute pure policies through `dsh-mnemon-strategy-workspace/extension-sdk`; they cannot run commands, write files, send messages or borrow another Source's authority.
 
 `dsh-mnemon-workspace-kit` publishes reusable record, file, asset and DSH adapter utilities. Plugins declare these dependencies and import published exports. The Host authenticates and routes generic operations, owns shared budgets and renders registered Source pages. It has no new business-plugin allowlist. Unloading one Source removes its capabilities while retaining its data.
 
@@ -75,3 +75,9 @@ pnpm release:intent
 ```
 
 The first command validates documentation, types, deterministic builds, all package/root tests, a real Headless profile and published contents. The artifact gate installs every independent tarball without workspace links and exercises an external consumer, Starter upgrade and optional Strategy activation in real DSH. See the [retained WebUI evidence](../../workspace-context-validation.md) for actual outcomes, screenshots and limitations, and the [implementation inventory](../../plans/composable-workspace-context.md) for ownership criteria.
+
+## Learning and feedback
+
+Enable **Learning** and **Learning cycle** from the plugin manager when you need periodic improvement. The Source owns evidence, reviewed candidates, transfers and explicit feedback; the enhancement owns scheduling. Defaults remain the original three tiers. In the Learning page, inspect pending evidence, edit and adopt candidates, then record helpfulness or concerns after use. Reads and model-reported use are shown separately. Capture and automatic-adoption switches persist, and failed or interrupted reviews remain outstanding. Global preference adoption requires two independent human observations. Transfer to another Source creates one pending destination record and retains a durable link; it does not silently activate both copies.
+
+Optional pages share host-theme surfaces, notices and metrics from `dsh-mnemon/client`; custom plugin layouts should use these browser SDK primitives. Strategy configuration supports typed boolean switches.

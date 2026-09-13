@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import type { MemorySourcePageProps, MnemonSourceManagementClient } from 'dsh-mnemon/client'
 import { createCollectionPage } from '../src/client.tsx'
 import { RecordActionPanel } from '../src/action-client.tsx'
-vi.mock('dsh-mnemon/client', () => ({ MemorySourcePageFrame: ({children}: {children:ReactNode}) => children }))
+vi.mock('dsh-mnemon/client', () => ({ memoryPluginStyles: '', MemorySourcePageFrame: ({children}: {children:ReactNode}) => children }))
 afterEach(cleanup)
 it('keeps action forms and results bound to the selected scope during pending mutations', async () => {
   let finish!: (value: unknown) => void

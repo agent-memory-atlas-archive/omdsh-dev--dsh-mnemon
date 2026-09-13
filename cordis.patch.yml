@@ -142,3 +142,9 @@
         - id: mnemon-source-sync
           name: dsh-mnemon-source-sync
           disabled: true
+        - id: mnemon-source-learning
+          name: dsh-mnemon-source-learning
+          disabled: true
+        - id: mnemon-strategy-learning-cycle
+          name: dsh-mnemon-strategy-learning-cycle
+          disabled: true

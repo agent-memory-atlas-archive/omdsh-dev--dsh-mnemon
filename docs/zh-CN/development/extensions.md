@@ -224,3 +224,5 @@ RSI 应保存可复现候选输入/制品，对照已知组合评估，经明确
 ### 可选的操作观察
 
 `observeMemoryOperations(ctx, observer)` 订阅 Core 在成功派发操作后生成的不可变元数据，生命周期绑定安装插件的 Fiber。事件包含作用域、Source 与操作标识、受限的记录标识，以及实际写入回执中的状态和完成程度；不包含输入、提示词、记录正文或授权凭据，也不授予执行权限。读取只表示内容被提供，不能证明已被使用或有帮助；管理操作完成也不代表产生了已提交的记忆回执。观察者应将持久化工作放入自己的受限队列并处理失败，不得使已经完成的操作失效。业务含义与反馈策略由可选的 Source 和 Strategy 插件负责。
+
+可选插件页面使用 `dsh-mnemon/client` 的 `MemoryPluginSurface`、`MemoryPluginNotice`、`MemoryPluginMetrics` 与 `memoryPluginStyles`。这些浏览器控件沿用 DSH 语义主题色和键盘焦点样式，不包含 Source 执行权限。策略配置字段支持 `input: 'boolean'`，纯工厂执行前会校验布尔类型。

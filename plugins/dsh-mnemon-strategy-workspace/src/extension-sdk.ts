@@ -5,13 +5,14 @@ export type WorkspacePolicies = {
   focus: { sourceKeys: string[]; writableSourceKeys?: string[]; maxProjectionCharacters: number }
   capture: { instruction: string; reminders?: Array<{ sourceKey: string; instruction: string }> }
   review: { interval: number; instruction: string }
+  learning: { interval: number; instruction: string; feedbackReview: boolean; outcomeInterval: number }
   prompts: { instruction: string }
   collaboration: { instruction: string }
 }
 export type WorkspacePolicySlot = keyof WorkspacePolicies
 export function validateWorkspacePolicy<K extends WorkspacePolicySlot>(slot: K, value: MemoryJsonValue): WorkspacePolicies[K] {
   const input = memoryInputRecord(value, 'workspace policy')
-  const allowed = slot === 'focus' ? ['sourceKeys', 'writableSourceKeys', 'maxProjectionCharacters'] : slot === 'review' ? ['interval', 'instruction'] : slot === 'capture' ? ['instruction', 'reminders'] : ['prompts', 'collaboration'].includes(slot) ? ['instruction'] : []
+  const allowed = slot === 'focus' ? ['sourceKeys', 'writableSourceKeys', 'maxProjectionCharacters'] : slot === 'learning' ? ['interval', 'instruction', 'feedbackReview', 'outcomeInterval'] : slot === 'review' ? ['interval', 'instruction'] : slot === 'capture' ? ['instruction', 'reminders'] : ['prompts', 'collaboration'].includes(slot) ? ['instruction'] : []
   if (!allowed.length || Object.keys(input).some(key => !allowed.includes(key))) throw new Error('Unsupported workspace policy field or slot')
   if (slot === 'focus') {
     const sourceKeys = memoryInputStringArray(input.sourceKeys, 'sourceKeys', 32) ?? []
@@ -20,12 +21,16 @@ export function validateWorkspacePolicy<K extends WorkspacePolicySlot>(slot: K, 
       || writableSourceKeys?.some(key => !sourceKeys.includes(key))) throw new Error('Focus needs distinct Source keys and a writable subset')
     return { sourceKeys, ...(writableSourceKeys ? { writableSourceKeys } : {}), maxProjectionCharacters: memoryInputInteger(input.maxProjectionCharacters, 8192, 1, 65536) } as WorkspacePolicies[K]
   }
+  if (slot === 'learning') {
+    if (input.feedbackReview !== undefined && typeof input.feedbackReview !== 'boolean') throw new Error('Feedback review must be boolean')
+    return { instruction: memoryInputText(input.instruction, 'instruction', 4000)!, interval: memoryInputInteger(input.interval, 5, 1, 1000), feedbackReview: input.feedbackReview !== false, outcomeInterval: memoryInputInteger(input.outcomeInterval, 0, 0, 1000) } as WorkspacePolicies[K]
+  }
   if (slot === 'capture' && input.reminders !== undefined) {
     if (!Array.isArray(input.reminders) || input.reminders.length > 32) throw new Error('Capture reminders must be a bounded list')
     const reminders = input.reminders.map(value => { const item = memoryInputRecord(value, 'capture reminder'); if (Object.keys(item).some(key => !['sourceKey', 'instruction'].includes(key))) throw new Error('Unsupported capture reminder field'); return { sourceKey: memoryInputText(item.sourceKey, 'sourceKey', 300)!, instruction: memoryInputText(item.instruction, 'instruction', 1000)! } })
     return { instruction: memoryInputText(input.instruction, 'instruction', 4000)!, reminders } as WorkspacePolicies[K]
   }
-  return { instruction: memoryInputText(input.instruction, 'instruction', 4000)!, ...(slot === 'review' ? { interval: memoryInputInteger(input.interval, 5, 1, 1000) } : {}) } as WorkspacePolicies[K]
+  return { instruction: memoryInputText(input.instruction, 'instruction', 4000)!, ...(['review', 'learning'].includes(slot) ? { interval: memoryInputInteger(input.interval, 5, 1, 1000) } : {}) } as WorkspacePolicies[K]
 }
 export function defineWorkspacePolicy<K extends WorkspacePolicySlot>(value: {
   typeId: string; packageName: string; slot: K

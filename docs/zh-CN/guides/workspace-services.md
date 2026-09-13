@@ -2,7 +2,7 @@
 
 [English](../../en/guides/workspace-services.md)
 
-可选工作区组合包含 15 个 Source：已有的 Runtime、Documents、Memory Spaces，以及 12 个可独立安装的工作区 Source。Starter 安装这些软件包，但默认关闭可选入口；按需启用并明确选择 `workspace` 策略。原有三层组合仍为默认值。
+可选工作区组合包含 16 个 Source：已有的 Runtime、Documents、Memory Spaces，以及 13 个可独立安装的工作区 Source。Starter 安装这些软件包，但默认关闭可选入口；按需启用并明确选择 `workspace` 策略。原有三层组合仍为默认值。
 
 ## 职责与组合
 
@@ -75,3 +75,9 @@ pnpm release:intent
 ```
 
 第一条命令检查文档、类型、确定性构建、全部插件与根测试、真实 Headless profile 及发布内容；制品检查将每个独立 tarball 安装到没有工作区链接的环境，验证外部消费者、Starter 升级和真实 DSH 多策略启用。实际结果、截图与边界见[WebUI 验收记录](../../workspace-context-validation.md)，职责标准见[实现清单](../../plans/composable-workspace-context.md)。
+
+## 经验整理与数据回流
+
+需要周期性改进时，在插件管理中开启**经验整理**和**经验整理周期**。Source 拥有证据、待审核建议、转存与明确反馈，增强负责调度；默认仍为原始三层记忆。在经验整理页检查证据、编辑并采纳建议，使用后记录帮助或问题。读取与模型自报使用单独显示。回流和自动采纳开关会持久化，失败或中断的整理保留未完成状态。全局偏好采纳需要两条独立人工证据。转入其他 Source 时仅创建一个目标待审核条目并保留关联，不会同时激活两份内容。
+
+可选插件页面共享 `dsh-mnemon/client` 的主题化页面、通知和指标控件；自定义布局应使用这些浏览器 SDK 组件。策略配置支持类型化布尔开关。

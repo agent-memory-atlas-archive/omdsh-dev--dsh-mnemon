@@ -6,7 +6,7 @@ import type { MemoryJsonValue, MemorySourceDefinition } from 'dsh-mnemon/contrac
 import { defineMemoryPlugin, installMemory, memoryConfigurationDigest, memoryInputRecord } from 'dsh-mnemon/extension-sdk'
 import { createRecordSource, digest, json, reviseRecord, sourceRecordDirectory, visibleRecord, type RecordSourceOptions } from 'dsh-mnemon-workspace-kit'
 import { agentMemoryScope, DshWorkspaceAdapter, installAgentHooks } from 'dsh-mnemon-workspace-kit/dsh'
-import { countReviewRound, ReviewEngine, type ReviewPort } from './engine.ts'
+import { countReviewRound, completeReviewCycle, ReviewEngine, type ReviewPort } from './engine.ts'
 export const name = 'dsh-mnemon-source-review'
 export const inject = ['mnemonMemory', 'agentPresets', 'agents', 'sessionQuery', 'workspaceRegistry', 'llm']
 export interface Config { dataDir?: string; interval?: number; provider?: string; model?: string; instanceConstraints?: string }
@@ -31,7 +31,7 @@ const options: RecordSourceOptions = {
   mutate(operation, input, { records, scope }) {
     const cycle = records.find(record => record.id === input.id && record.kind === 'cycle' && visibleRecord(record, scope))
     if (operation !== 'complete-cycle' || !cycle) throw new Error('Choose the current session review cycle')
-    reviseRecord(cycle, 'complete-cycle'); cycle.data.completedRound = cycle.data.rounds!; cycle.data.due = false
+    completeReviewCycle(records, scope, cycle.id)
   },
 }
 const engines = new Map<string, { engine: ReviewEngine; refs: number }>()
@@ -40,7 +40,7 @@ export function createReviewSource(config: Config, port: ReviewPort, ctx?: Conte
   const base = createRecordSource(options, config)
   return { ...base, create(context) {
     const directory = sourceRecordDirectory('review', context, config), key = digest([directory, config])
-    let entry = engines.get(key); if (!entry) { entry = { engine: new ReviewEngine(directory, port), refs: 0 }; engines.set(key, entry) } entry.refs++
+    let entry = engines.get(key); if (!entry) { entry = { engine: new ReviewEngine(directory, { ...port, completed(scope, reviewId, result) { port.completed?.(scope, reviewId, result); ctx?.emit('mnemon-workspace/activity', { eventKey: 'review:' + reviewId, sourceInstanceKey: context.sourceInstanceKey, scope, kind: 'review-completed', title: result.summary.slice(0, 300), summary: result.summary + '\n' + result.issues.map(issue => issue.text).join('\n'), level: result.severity === 'blocker' ? 'error' : result.severity === 'concern' ? 'warning' : 'info', recordId: reviewId }) } }), refs: 0 }; engines.set(key, entry) } entry.refs++
     const engine = entry.engine, runtime = base.create(context)
     const stop = ctx ? installAgentHooks(ctx, {
       async beforeStep(input) { if (input.step === 1 && input.messages.some(message => message.source.kind === 'user') && input.agent.session.header.origin !== 'subagent') await countReviewRound(engine.store, agentMemoryScope(input.agent), input.turn, config.interval ?? 5, input.signal); return [] },

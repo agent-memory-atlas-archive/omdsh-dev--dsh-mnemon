@@ -15,3 +15,5 @@ export { useRequestVersion } from './use-request-version.ts'
 export { appearanceClass } from './view-styles.ts'
 export { translateEn, translateZh, type MnemonKey, type MnemonTranslate } from './locales.ts'
 export { IconChevronLeftOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
+
+export { memoryPluginStyles, MemoryPluginSurface, MemoryPluginMetrics, MemoryPluginNotice } from './plugin-ui.tsx'
