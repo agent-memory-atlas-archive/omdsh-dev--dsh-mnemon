@@ -10,6 +10,14 @@ This is an automated live-model integration checkpoint. Earlier WebUI images bel
 
 本轮独立实例使用正式发布的 DSH `0.1.5-rc.1`、真实 Mnemon `0.2.7` 和 `deepseek-flash`，11 次真实调用返回的模型均与请求一致。已验证独立人类证据采集、待审核建议、负反馈重新触发复盘、保留旧有效偏好、插件唤醒不计入人类轮次、真实任务完成回流，以及使用相同模型完成手动复盘。该结果属于真实模型自动化集成验收；下文旧截图仍只证明各自注明的版本和固定模型流程。浏览器仍拦截本轮本地页面，新增界面逐项交互与截图待完成。
 
+The `781ca96` code checkpoint passed deterministic builds, documentation and type checks, all plugin tests, 1,041 root tests (6 opt-in tests skipped), and real Headless activation, restart, legacy migration and whole-Starter disabling. The package gate initially exceeded its former 1,400,000-byte allowance after adding shared editor declarations. The reviewed allowance is now 1,425,000 bytes; the repeated gate passed with 52 files, 310,379 packed bytes and 1,404,768 unpacked bytes, 12 Node entries, 30 public type dependencies, executable help, `publint` and `attw`. The Markdown renderer remains a host dependency.
+
+`pnpm verify:plugins --skip-build` then passed all 37 independent plugin repositories and 38 tarballs, including the updated external SDK/Client consumer, real DSH Starter installation/upgrade and simultaneous optional Strategy activation. Each independent plugin installed outside the repository, rejected workspace links and ran its own type check, tests and build. The external consumer explicitly lists both new learning packages and exercises the compiled shared editor with native Markdown. Release-intent coverage passed. These results complete automated checks; they do not remove the WebUI evidence requirement.
+
+`781ca96` 对应代码已通过确定性构建、文档与类型检查、全部插件测试、1,041 项根测试（6 项 opt-in 跳过），以及真实 Headless 启动、重启、旧配置迁移和整体停用 Starter。新增共享编辑器声明后，解包体积首次超过原 1,400,000 字节预算；审核后预算调整为 1,425,000 字节，重新执行的制品检查通过：52 个文件、压缩后 310,379 字节、解包后 1,404,768 字节，12 个 Node 入口、30 个公开类型依赖、命令帮助、`publint` 与 `attw` 均通过，Markdown 渲染继续依赖宿主。
+
+随后独立制品检查通过全部 37 个插件仓库和 38 个 tarball，包含更新后的外部 SDK/Client 消费者、真实 DSH Starter 安装升级及多增强策略启用。每个插件均在仓库外安装，拒绝工作区链接，并独立运行类型检查、测试与构建；外部消费者明确声明两个新增经验整理插件，验证实际编译的编辑器与原生 Markdown。changeset 覆盖检查通过。自动化检查完成，主 WebUI 证据仍待补齐。
+
 ## Isolated instance
 
 The branch starts from committed `main` in a separate Git worktree. `scripts/serve-workspace.mjs` owns a separate DSH home, copied Mnemon executable, data directory, synthetic workspace, local model fixture and service logs. The original checkout and its uncommitted work are not used by this instance.

@@ -71,6 +71,8 @@
     "dsh-mnemon-strategy-review-cycle": "0.1.0",
     "dsh-mnemon-strategy-team-coordination": "0.1.0",
     "dsh-mnemon-strategy-workspace": "0.1.0",
-    "dsh-mnemon-workspace-kit": "0.1.0"
+    "dsh-mnemon-workspace-kit": "0.1.0",
+    "dsh-mnemon-source-learning": "0.1.0",
+    "dsh-mnemon-strategy-learning-cycle": "0.1.0"
   }
 }
