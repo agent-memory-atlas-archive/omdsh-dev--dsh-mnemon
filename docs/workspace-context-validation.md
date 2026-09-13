@@ -1,6 +1,14 @@
 # Workspace context validation
 
-This log retains the implementation checkpoints and their evidence. All final gates passed; see [Final verification](#final-verification) for the delivery results. Earlier checkpoint counts describe their respective stages. The full capability inventory remains in [the delivery plan](plans/composable-workspace-context.md).
+This log retains dated implementation checkpoints and their evidence. The earlier [Final verification](#final-verification) applies to its recorded revision, not subsequent changes. The September 14 learning and plugin-management acceptance is in progress: real Flash integration passes, while the main WebUI remains blocked by `ERR_BLOCKED_BY_CLIENT` and has no new screenshots. The full capability inventory remains in [the delivery plan](plans/composable-workspace-context.md).
+
+## September 14 learning and plugin management
+
+The isolated configured-model instance uses published DSH `0.1.5-rc.1`, real Mnemon `0.2.7` and `deepseek-flash`. The API returned that exact model on all 11 calls in the passing learning test. The published DSH agent loop captured independent human evidence, committed pending proposals, reopened review from explicit negative feedback while retaining the original active preference, excluded a plugin wake from human-round counts, and returned actual task completion as outcome evidence. Manual review also used the same hosted model and persisted completion. See the [sanitized report](pr-assets/learning-feedback-flash-20260914/validation.json) and `tests/learning-flash.spec.ts` for the scope and assertions.
+
+This is an automated live-model integration checkpoint. Earlier WebUI images below use their documented deterministic model and revision. Chrome and the in-app browser currently block the local configured-model page; new learning, plugin-management and themed editor screenshots are still required before acceptance is complete.
+
+本轮独立实例使用正式发布的 DSH `0.1.5-rc.1`、真实 Mnemon `0.2.7` 和 `deepseek-flash`，11 次真实调用返回的模型均与请求一致。已验证独立人类证据采集、待审核建议、负反馈重新触发复盘、保留旧有效偏好、插件唤醒不计入人类轮次、真实任务完成回流，以及使用相同模型完成手动复盘。该结果属于真实模型自动化集成验收；下文旧截图仍只证明各自注明的版本和固定模型流程。浏览器仍拦截本轮本地页面，新增界面逐项交互与截图待完成。
 
 ## Isolated instance
 
@@ -28,7 +36,7 @@ The WebUI caught two integration defects that unit composition alone did not exp
 
 ## 中文
 
-此日志保留各实施阶段及对应验收证据，早期测试数量表示当时的阶段结果。最终整体验收已通过，见[最终验证](#final-verification)；完整能力清单见[实施计划](plans/composable-workspace-context.md)。
+此日志保留各实施阶段及对应验收证据，早期测试数量表示当时的阶段结果。下文[最终验证](#final-verification)只对应其注明的旧版提交；9 月 14 日新增能力的真实模型集成测试已通过，主 WebUI 仍因浏览器拦截而待验收。完整能力清单见[实施计划](plans/composable-workspace-context.md)。
 
 开发分支从已提交的 `main` 建立，使用独立 worktree、DSH 主目录、Mnemon 可执行文件与数据目录。原检出目录及其中未提交的改动没有参与测试。当前验证服务监听本机 5279 端口，DSH 为 `0.1.2-rc.1`，实际 Mnemon 为 `0.2.7`。固定响应的本地模型验证编排流程，不代表真实模型质量；原生记忆验收覆盖实际数据库写入及 WebUI 读取，不代表已启用向量生成。
 

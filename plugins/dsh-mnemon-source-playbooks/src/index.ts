@@ -5,7 +5,7 @@ import { createMemoryMutationReceipt } from 'dsh-mnemon/extension-sdk'
 import type { Context } from '@deepseek-ai/cordis'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { FileSystemSkillProvider } from '@deepseek-ai/dsh-skill-filesystem'
-import { listSkillFiles, readSkillFile, saveSkillFile } from './files.ts'
+import { archiveSkillFile, createSkillFile, listSkillFiles, readSkillFile, saveSkillFile } from './files.ts'
 import type { SkillCandidate } from '@deepseek-ai/dsh-skill'
 import z from 'schemastery'
 import type { MemoryJsonValue, MemorySourceDefinition, MemorySourceRuntime } from 'dsh-mnemon/contracts'
@@ -46,14 +46,20 @@ export function createPlaybooksSource(config: Config = {}, integration: Integrat
           if (!skill || skill.provider !== providerName) throw new Error('The skill is not enabled in this Source and workspace')
           return { revision: snapshot.revision, value: { name: skill.name, content: skill.content.slice(0, 50000), truncated: skill.content.length > 50000 } }
         }
-        if (['skill-files', 'skill-file', 'save-skill-file'].includes(request.operation)) {
+        if (['skill-roots', 'skill-files', 'skill-file', 'save-skill-file', 'create-skill-file', 'archive-skill-file'].includes(request.operation)) {
           const input = memoryInputRecord(request.input ?? {}, 'skill file operation'), snapshot = await store.read(request.signal)
-          if (request.operation === 'save-skill-file') {
+          if (['save-skill-file', 'create-skill-file', 'archive-skill-file'].includes(request.operation)) {
             if (request.mode !== 'mutate' || !request.confirmed || request.expectedRevision !== snapshot.revision) throw new Error('Confirm the current skill file edit')
-            const result = await saveSkillFile(config.skillDirectories ?? [], String(input.path ?? ''), String(input.content ?? ''), String(input.digest ?? ''), request.signal)
+            const roots = config.skillDirectories ?? []
+            const result = request.operation === 'create-skill-file'
+              ? await createSkillFile(roots, String(input.root ?? ''), String(input.name ?? ''), String(input.content ?? ''), request.signal)
+              : request.operation === 'archive-skill-file'
+                ? await archiveSkillFile(roots, String(input.path ?? ''), String(input.digest ?? ''), request.signal)
+                : await saveSkillFile(roots, String(input.path ?? ''), String(input.content ?? ''), String(input.digest ?? ''), request.signal)
             integration.changed?.(); return { revision: snapshot.revision, value: json(result) }
           }
           if (request.mode !== 'read') throw new Error('Skill browsing is read-only')
+          if (request.operation === 'skill-roots') return { revision: snapshot.revision, value: json(await allowedDirectories(config.skillDirectories ?? [])) }
           return { revision: snapshot.revision, value: json(request.operation === 'skill-files' ? await listSkillFiles(config.skillDirectories ?? [], request.signal) : await readSkillFile(config.skillDirectories ?? [], String(input.path ?? ''), request.signal)) }
         }
         if (request.mode === 'read' && request.operation === 'prompt-preview') {

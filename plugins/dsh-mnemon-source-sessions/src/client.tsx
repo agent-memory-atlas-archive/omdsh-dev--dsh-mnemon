@@ -60,7 +60,7 @@ function ConversationResult(props: MemorySourcePageProps & { value: MemoryJsonVa
       setNotice(zh ? '已创建分支会话' : 'Fork created')
     } catch (error) { setNotice(String(error)) } finally { setBusy(false) }
   }
-  return <div ref={root} aria-label={zh ? '书签定位结果' : 'Saved message location'}>{items.map(item => <article key={item.id} tabIndex={-1} {...(item.provenance?.target ? { 'data-current-message': true } : {})} style={{ marginTop: 12, padding: 12, border: item.provenance?.target ? '2px solid var(--color-primary, #65b9d4)' : '1px solid var(--color-border, #555)' }}>
+  return <div ref={root} aria-label={zh ? '书签定位结果' : 'Saved message location'}>{items.map(item => <article key={item.id} tabIndex={-1} {...(item.provenance?.target ? { 'data-current-message': true } : {})} style={{ marginTop: 12, padding: 12, border: item.provenance?.target ? '2px solid var(--dsw-alias-label-primary, CanvasText)' : '1px solid var(--dsw-alias-border-l2, GrayText)' }}>
     <h3>{item.provenance?.target ? (zh ? '当前书签' : 'Selected bookmark') : item.provenance?.role} · #{item.provenance?.seq}</h3><small>{item.provenance?.at}</small><p style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>{item.text}</p>{item.provenance?.target && item.provenance.throughSeq !== undefined && <button disabled={busy || !props.writable} onClick={() => void fork(item)}>{zh ? '从书签所在轮次分叉' : 'Fork through the bookmarked turn'}</button>}
   </article>)}{notice && <p role="status">{notice}</p>}</div>
 }

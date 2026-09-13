@@ -24,6 +24,10 @@ Use `{{name}}` variables in prompts; `date`, `time`, `workspace` and `session` a
 
 `skillDirectories` 可配置额外的原生技能目录，复用 DSH 公开文件系统技能提供方解析元数据。页面支持目录检索和 Markdown 文件编辑，限制真实路径和 256 KiB 文件大小。保存检查已读取的内容摘要，协调并发写入，以原子替换保留权限；过期编辑会提示重新读取。目录技能与待审核的技能建议分别遵循自己的启用流程。
 
+The page can create a named skill folder and its `SKILL.md` inside a registered directory. Existing folders are never overwritten, and the complete file is published atomically. Removing a file checks its digest and renames it to a hidden `.archived` sibling, which is excluded from discovery; the recovery path is shown after removal. Restore it on the service host only after checking that the original filename is still free. The shared Core editor provides native Markdown preview, unsaved-change status and ⌘/Ctrl+S. Failed saves keep the draft; changing workspaces drops old responses and drafts.
+
+页面支持在已配置目录中创建技能文件夹及 `SKILL.md`，拒绝覆盖已有目录，完整文件以原子方式发布。移除先校验内容摘要，再改名为同目录下隐藏的 `.archived` 副本，使其退出技能发现；完成后显示恢复路径。恢复时应先在服务主机确认原文件名空闲。Core 编辑器统一提供原生 Markdown 预览、未保存提示和 ⌘/Ctrl+S；保存失败保留草稿，切换工作区时清除旧响应与草稿。
+
 ## Reviewed model operations
 
 Model prompt creation and editing require `instruction-update` authority. Invoking, scheduling or stopping a prompt requires `session-instructions` authority and the exact record version. Skills retain their separate proposal/approval path. An immediate invocation always uses once; explicit wake steers a running conversation at its next step or wakes an idle one. An interval of zero also means one use, regardless of count. Duplicate active schedules for the same prompt and session are rejected. Failed variable expansion retains a failed record and does not block other schedules.

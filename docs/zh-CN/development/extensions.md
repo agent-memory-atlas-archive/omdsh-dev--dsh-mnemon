@@ -227,4 +227,6 @@ RSI 应保存可复现候选输入/制品，对照已知组合评估，经明确
 
 Source 可在管理结果或写入回执详情中返回受限的 `records: [{ id, revision, state }]` 元数据，包括采纳修订时自动归档原版等连带变更。Core 只转发这些元数据字段，状态的含义由 Source 定义。观察者失败，包括异步 Promise 拒绝，不会使已经完成的操作失效。
 
-可选插件页面使用 `dsh-mnemon/client` 的 `MemoryPluginSurface`、`MemoryPluginNotice`、`MemoryPluginMetrics` 与 `memoryPluginStyles`。这些浏览器控件沿用 DSH 语义主题色和键盘焦点样式，不包含 Source 执行权限。策略配置字段支持 `input: 'boolean'`，纯工厂执行前会校验布尔类型。
+可选插件页面使用 `dsh-mnemon/client` 的 `MemoryPluginSurface`、`MemoryPluginNotice`、`MemoryPluginMetrics` 与 `memoryPluginStyles`。自定义布局可将 `memoryPluginTokens` 中的 CSS 声明放到自身根节点，使用其中的 `--mc-*` 语义主题色。这些浏览器控件沿用 DSH 主题和键盘焦点样式，不包含 Source 执行权限。策略配置字段支持 `input: 'boolean'`，纯工厂执行前会校验布尔类型。
+
+`MemoryMarkdown` 使用 DSH 的公开 Markdown 渲染器。`MemoryMarkdownEditor` 提供预览、未保存提示、显式放弃修改和 ⌘/Ctrl+S 保存。传入 `value`、`savedValue`、`locale`、`label`、`onChange`、`onSave`，也可用 `dirty` 纳入同一次保存中的其他字段。Source 仍负责作用域、版本校验、持久化与错误处理；保存成功前保留打开文档时的版本，失败时保留草稿，切换工作区后丢弃旧响应。
