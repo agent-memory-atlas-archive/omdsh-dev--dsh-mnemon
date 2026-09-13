@@ -30,11 +30,12 @@ export class LearningRunner {
   private async run(scope: MemoryOperationScope, window: LearningWindow, runId: string, lifetime: AbortSignal): Promise<void> {
     const signal = AbortSignal.any([lifetime, AbortSignal.timeout(120_000)])
     try {
-      const raw = await this.port.complete(scope, boundedLearningWindow(window, 48_000), signal)
+      const inspected = boundedLearningWindow(window, 48_000)
+      const raw = await this.port.complete(scope, inspected, signal)
       signal.throwIfAborted()
       let value: unknown
       try { value = JSON.parse(raw.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '')) } catch { throw new Error('The learning model did not return valid JSON; the review remains due') }
-      await this.learning.complete(scope, parseLearningReview(value), window, undefined, signal)
+      await this.learning.complete(scope, parseLearningReview(value), inspected, undefined, signal)
       await this.learning.store.change(undefined, records => { const cycle = records.find(r => r.id === window.cycleId); if (cycle?.data.runId === runId) { reviseRecord(cycle, 'review-idle'); cycle.data.status = 'idle'; delete cycle.data.error; delete cycle.data.claimUntil } })
     } catch (error) {
       try { await this.learning.store.change(undefined, records => {

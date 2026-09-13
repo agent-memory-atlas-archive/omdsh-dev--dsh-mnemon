@@ -885,7 +885,7 @@ export class MemoryCompositionGeneration {
     const observation = deepFreeze(jsonClone({ ...value, id: randomUUID(), occurredAt: this.now().toISOString(),
       sourceInstanceKey: source.installed.instanceKey, sourceTypeId: source.installed.definition.manifest.typeId,
     }, 'memory operation observation'))
-    try { this.observer(observation) } catch {}
+    try { void Promise.resolve(this.observer(observation)).catch(() => {}) } catch {}
   }
 
   async dispose(): Promise<void> {

@@ -7,7 +7,7 @@ import type { MemoryStrategyConfigurationField } from '../sdk/strategy-configura
 import { MnemonClient } from './api.ts'
 import css from './MemoryCompositionEditor.module.css'
 
-export function MemoryCompositionEditor(props: { connection?: ClientConnectionHandle; sessionId?: string; workspaceId?: string; locale: string }) {
+export function MemoryCompositionEditor(props: { connection?: ClientConnectionHandle; sessionId?: string; workspaceId?: string; locale: string; refreshKey?: number; onChange?(): void }) {
   const [open, setOpen] = useState(false), zh = props.locale.startsWith('zh')
   if (!props.connection) return null
   return <details className={css.root} onToggle={event => setOpen(event.currentTarget.open)}>
@@ -67,7 +67,7 @@ function StringList(props: { label: string; value: string[]; onChange(value: str
     props.onChange([...new Set(event.target.value.split('\n').map(value => value.trim()).filter(Boolean))])
   }} />
 }
-function Editor(props: { connection: ClientConnectionHandle; sessionId?: string; workspaceId?: string; locale: string }) {
+function Editor(props: { connection: ClientConnectionHandle; sessionId?: string; workspaceId?: string; locale: string; refreshKey?: number; onChange?(): void }) {
   const client = useMemo(() => new MnemonClient(props.connection, props.sessionId, props.workspaceId), [props.connection, props.sessionId, props.workspaceId])
   const zh = props.locale.startsWith('zh'), t = (en: string, cn: string) => zh ? cn : en, label = (entry: MemoryPluginEntryView) => entry.label[zh ? 'zh-CN' : 'en']
   const [dashboard, setDashboard] = useState<MemoryViewDashboard>(), [draft, setDraft] = useState<Record<string, MemoryPluginPreference>>({}), [strategy, setStrategy] = useState(''), [editing, setEditing] = useState(''), [error, setError] = useState(''), [status, setStatus] = useState(''), [busy, setBusy] = useState(false)
@@ -79,6 +79,7 @@ function Editor(props: { connection: ClientConnectionHandle; sessionId?: string;
     catch (error) { if (current === serial.current && generation === epoch.current) setError(String(error)) }
   }
   useEffect(() => { epoch.current++; setDashboard(undefined); setDraft({}); setEditing(''); setPreview(undefined); setBusy(false); pending.current = false; void load(); return () => { epoch.current++; serial.current++ } }, [client])
+  useEffect(() => { if (props.refreshKey) void load() }, [props.refreshKey])
   const entries = dashboard?.entries.filter(entry => entry.roles.includes('strategy') || entry.roles.includes('strategy-extension')) ?? []
   const visibleEntries = entries.filter(entry => entry.roles.includes('strategy') ? entry.typeId === strategy : entry.strategyTypeId === strategy)
   const editorId = useId()
@@ -113,7 +114,7 @@ function Editor(props: { connection: ClientConnectionHandle; sessionId?: string;
       await client.applyView(preview.request); committed = true
       const next = await client.viewDashboard()
       if (generation !== epoch.current) return
-      setDashboard(next); setDraft({}); setPreview(undefined); setStrategy(next.strategyTypeId); setStatus(t('Composition saved. New turns use these settings.', '组合配置已保存，新轮次将使用这些设置。'))
+      setDashboard(next); setDraft({}); setPreview(undefined); setStrategy(next.strategyTypeId); setStatus(t('Composition saved. New turns use these settings.', '组合配置已保存，新轮次将使用这些设置。')); props.onChange?.()
     } catch (error) {
       if (generation !== epoch.current) return
       setPreview(undefined)

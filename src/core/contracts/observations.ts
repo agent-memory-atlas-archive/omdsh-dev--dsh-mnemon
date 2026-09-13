@@ -17,4 +17,4 @@ export interface MemoryOperationObservation {
   completion?: MemoryMutationCompletion
 }
 
-export type MemoryOperationObserver = (observation: Readonly<MemoryOperationObservation>) => void
+export type MemoryOperationObserver = (observation: Readonly<MemoryOperationObservation>) => void | Promise<void>

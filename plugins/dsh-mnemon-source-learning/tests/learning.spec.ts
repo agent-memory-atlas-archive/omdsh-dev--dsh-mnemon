@@ -123,3 +123,19 @@ it('persists policy choices and reviews feedback without inventing another human
   await store.change(scope, 'configure', { settings: { captureFeedback: false, autoAcceptFacts: true } })
   expect(await new LearningStore(store.store.directory).policy()).toMatchObject({ captureFeedback: false, autoAcceptFacts: true, autoAcceptPreferences: false })
 })
+
+it('does not accept evidence that was removed from the bounded model review', async () => {
+  const store = await fixture()
+  for (let turn = 1; turn <= 30; turn++) await human(store, turn, 'Long conversation evidence. '.repeat(240))
+  const window = learningWindow(await store.store.read(), scope)!, oldest = window.evidence[0]!
+  const runner = new LearningRunner(store, { complete: async (_scope, inspected) => {
+    expect(inspected.evidence.some(record => record.id === oldest.id)).toBe(false)
+    return JSON.stringify({ token: inspected.token, summary: 'Attempted to use omitted evidence', proposals: [{ category: 'fact', title: 'Uninspected fact', content: 'Unsupported fact', scope: 'project', evidenceIds: [oldest.id] }] })
+  } })
+  try {
+    await runner.queue(scope, (await store.store.read()).revision); await runner.idle()
+    const records = (await store.store.read()).records
+    expect(records.find(record => record.kind === 'cycle')?.data).toMatchObject({ completedRound: 0, status: 'failed' })
+    expect(records.some(record => record.kind === 'proposal')).toBe(false)
+  } finally { await runner.dispose() }
+})

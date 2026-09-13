@@ -195,11 +195,12 @@ function contributions(source = installedSource(), strategy = installedStrategy(
 }
 
 describe('Composable View Memory compiler', () => {
-  it('emits only completed operation metadata, keeps reads distinct and isolates observers', async () => {
+  it.each([false, true])('isolates synchronous and asynchronous observers (%s) and emits only completed metadata', async (asynchronous) => {
     const observations: Readonly<MemoryOperationObservation>[] = []
     const generation = new MemoryCompositionGeneration(contributions(), { observeOperation(value) {
       observations.push(value)
       expect(Object.isFrozen(value.scope)).toBe(true)
+      if (asynchronous) return Promise.reject(new Error('optional observer failed'))
       throw new Error('optional observer failed')
     } })
     try {

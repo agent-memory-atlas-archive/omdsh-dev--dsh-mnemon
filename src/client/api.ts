@@ -6,6 +6,9 @@ import {
   MNEMON_VIEW_CHANNEL,
   MNEMON_VIEW_WRITE_CHANNEL,
   type MemoryViewDashboard,
+  type MemoryPluginChangePlan,
+  type MemoryPluginInspection,
+  type MemoryPluginInstallResult,
   type MemoryViewInspection,
   type MemoryViewConfigurationRequest,
   type AssistantMessageText,
@@ -109,6 +112,16 @@ export class MnemonClient {
   }
   applyView(configuration: MemoryViewConfigurationRequest): Promise<{ saved: true }> {
     return this.call(MNEMON_VIEW_WRITE_CHANNEL, 'apply', this.scoped({ configuration, confirmed: true }))
+  }
+
+  planPlugin(entryId: string, enabled: boolean, expectedRevision: string): Promise<MemoryPluginChangePlan> {
+    return this.call(MNEMON_VIEW_CHANNEL, 'plan-plugin', this.scoped({ entryId, enabled, expectedRevision }))
+  }
+  inspectPlugin(packageName: string): Promise<MemoryPluginInspection> {
+    return this.call(MNEMON_VIEW_CHANNEL, 'inspect-plugin', { packageName })
+  }
+  installPlugin(packageName: string, version: string): Promise<MemoryPluginInstallResult> {
+    return this.call(MNEMON_VIEW_WRITE_CHANNEL, 'install-plugin', { packageName, version, confirmed: true })
   }
 
   sourceManagementCatalog(): Promise<MemorySourceManagementCatalog> {

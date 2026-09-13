@@ -72,12 +72,17 @@ export interface MemoryViewConfigurationRequest {
   entries: Record<string, MemoryPluginPreference>
 }
 
+export interface MemoryPluginChangePlan {
+  configuration: MemoryViewConfigurationRequest
+  changes: Array<{ entryId: string; label: MemoryPluginLocalizedText; enabled: boolean; reason: 'requested' | 'requirement' | 'strategy-change' | 'dependent' }>
+}
+
 export type MemoryPluginKind = 'source' | 'strategy'
 
 export interface MemoryPluginInstallationEnvironment {
   supported: boolean
   profileName?: string
-  reason?: 'loader-unavailable' | 'profile-unavailable' | 'cli-unavailable'
+  reason?: 'loader-unavailable' | 'profile-unavailable' | 'cli-unavailable' | 'read-only'
   suggestions: string[]
 }
 
@@ -88,6 +93,10 @@ export interface MemoryPluginInspection {
   description?: string
   mnemonPeerRange: string
   installed: boolean
+  installedVersion?: string
+  registered: boolean
+  compatible: boolean
+  peerChecks: Array<{ packageName: string; range: string; installedVersion?: string; compatible: boolean }>
 }
 
 export interface MemoryPluginInstallResult {

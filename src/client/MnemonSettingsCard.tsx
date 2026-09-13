@@ -20,6 +20,7 @@ import {
 import type { MemoryPluginEntryView, MemoryViewDashboard } from '../host/view-protocol.ts'
 import { MnemonClient } from './api.ts'
 import { MemoryCompositionEditor } from './MemoryCompositionEditor.tsx'
+import { MemoryPluginManager } from './MemoryPluginManager.tsx'
 import { SettingsSurface } from './SettingsSurface.tsx'
 import css from './MnemonSettingsCard.module.css'
 import { GlobalLocationSetting } from './GlobalLocationSetting.tsx'
@@ -487,10 +488,21 @@ export function MnemonSettingsCard({ scope, interactionScope: suppliedInteractio
           </div>
         </section>
 
+        <MemoryPluginManager
+          {...(connection === undefined ? {} : { connection })}
+          {...(sessionId === undefined ? {} : { sessionId })}
+          {...(workspaceId === undefined ? {} : { workspaceId })}
+          refreshKey={targetRevision}
+          onChange={() => setTargetRevision(value => value + 1)}
+          locale={t('config.title') === translateZh('config.title') ? 'zh-CN' : 'en'}
+        />
+
         <MemoryCompositionEditor
           {...(connection === undefined ? {} : { connection })}
           {...(sessionId === undefined ? {} : { sessionId })}
           {...(workspaceId === undefined ? {} : { workspaceId })}
+          refreshKey={targetRevision}
+          onChange={() => setTargetRevision(value => value + 1)}
           locale={t('config.title') === translateZh('config.title') ? 'zh-CN' : 'en'}
         />
 

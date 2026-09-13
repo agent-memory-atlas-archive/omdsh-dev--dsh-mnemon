@@ -12,6 +12,10 @@ A Source owns its store, revisions, proposals, queries, mutations, lifecycle and
 
 ## Composition settings
 
+Open **Settings → Memory system → Memory plugins** to search installed capabilities and filter Sources, complete Strategies, or enhancements. **Discover** lists inactive optional components. Before applying a change, the manager lists requirements, Strategy switches and affected enhancements. Deactivation preserves Source data. Ambiguous providers require an explicit choice.
+
+**Install another plugin** inspects an exact npm name, version, and actual Core/DSH peer ranges. Incompatible packages cannot be installed. Starter-registered modules can be updated directly; a new plugin needs a loadable DSH bundle. Installation uses the CLI belonging to the active Profile and reports the required restart before refreshing and activating the package.
+
 Open **Settings → Memory System → Composition settings**. Choose the main Strategy, then use each enhancement’s row to change its switch or expand its parameters. Fields come from the installed package’s public descriptor. Preview shows source, read, action and context counts; expand a source only when its operation details are needed. Save applies the exact previewed draft. Any further edit requires a new preview. **Reload configuration** discards this editor’s draft.
 
 ## Capability map

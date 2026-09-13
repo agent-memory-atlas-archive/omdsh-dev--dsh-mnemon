@@ -77,7 +77,7 @@ export class MemoryRuntime {
       const observation = deepFreeze(jsonClone(value, 'memory operation observation'))
       for (const observer of [...this.observers, ...(options.observeOperation ? [options.observeOperation] : [])]) {
         // Optional feedback cannot invalidate an operation that already completed.
-        try { observer(observation as Readonly<MemoryOperationObservation>) } catch {}
+        try { void Promise.resolve(observer(observation as Readonly<MemoryOperationObservation>)).catch(() => {}) } catch {}
       }
     } })
     host.reconcile(this.batchSnapshot ?? this.contributions.snapshot())

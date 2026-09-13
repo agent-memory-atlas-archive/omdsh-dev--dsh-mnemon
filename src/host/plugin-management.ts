@@ -30,6 +30,7 @@ import {
   type MemoryViewPreferences,
 } from './view-protocol.ts'
 import { inspectMemoryView } from './view-presentation.ts'
+import { planMemoryPluginChange } from './plugin-plan.ts'
 
 /** Deliberately excludes Loader.write(): generated or package YAML is never edited. */
 export interface MemoryPluginLoaderEntry {
@@ -354,6 +355,14 @@ export class MemoryPluginManagement {
 
   private choices(items: ManagedPlugin[], entries: Record<string, MemoryPluginPreference>): Map<string, MemoryPluginPreference> {
     return new Map(items.map(item => [item.entry.id, entries[item.entry.id] ?? { enabled: item.value.enabled, config: item.value.config }]))
+  }
+
+  async plan(strategyTypeId: string, entryId: string, enabled: boolean, expectedRevision: string) {
+    const catalog = await this.catalog()
+    if (catalog.revision !== expectedRevision) throw new Error('Memory plugin configuration changed; refresh before planning.')
+    const plan = planMemoryPluginChange(catalog, strategyTypeId, entryId, enabled)
+    this.validateRequest(await this.managed(), plan.configuration)
+    return plan
   }
 
   private validateGraph(items: ManagedPlugin[], choices: Map<string, MemoryPluginPreference>): void {

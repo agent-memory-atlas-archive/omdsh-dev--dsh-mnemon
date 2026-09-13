@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from 'schemastery'
 import { defineMemoryPlugin, installMemory, memoryConfigurationDigest } from 'dsh-mnemon/extension-sdk'
-import { createRecordSource, RecordStore, sourceRecordDirectory, type RecordSnapshot, type RecordSourceConfig } from 'dsh-mnemon-workspace-kit'
+import { createRecordSource, RecordStore, sourceRecordDirectory, visibleRecord, type RecordSnapshot, type RecordSourceConfig } from 'dsh-mnemon-workspace-kit'
 import { sourceOptions } from './source.ts'
 import type { MemoryOperationScope, MemorySourceDefinition } from 'dsh-mnemon/contracts'
 export const name = 'dsh-mnemon-source-tasks'
@@ -20,7 +20,7 @@ export function apply(ctx: Context, config: Config = {}): void {
      const after = await store.read()
      for (const record of after.records) {
        const previous = before.records.find(item => item.id === record.id)
-       if (record.state !== 'active' || !['done', 'blocked'].includes(String(record.data.status)) || previous?.state === record.state && previous.data.status === record.data.status) continue
+       if (!visibleRecord(record, scope) || record.state !== 'active' || !['done', 'blocked'].includes(String(record.data.status)) || previous?.state === record.state && previous.data.status === record.data.status) continue
        ctx.emit('mnemon-workspace/activity', { eventKey: `${record.id}:${record.version}:${String(record.data.status)}`, sourceInstanceKey: context.sourceInstanceKey, scope, kind: record.data.status === 'done' ? 'task-completed' : 'task-blocked', title: record.title, summary: record.content || record.title, level: record.data.status === 'done' ? 'info' : 'warning', recordId: record.id })
      }
    }
