@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { setMaxListeners } from 'node:events'
 import type {
   ComposableMemoryView,
@@ -12,6 +12,8 @@ import type {
   MemoryJsonValue,
   MemoryPluginDescriptor,
   MemoryMutationReceipt,
+  MemoryOperationObservation,
+  MemoryOperationObserver,
   MemoryReadGrant,
   MemorySourceFacts,
   MemorySourceManagementCatalog,
@@ -158,6 +160,8 @@ export function captureMemoryContributionSnapshot(snapshot: MemoryContributionSn
 }
 
 export interface CompileMemoryGenerationOptions {
+  /** Metadata only; observers cannot affect operation results or read grants. */
+  observeOperation?: MemoryOperationObserver
   /** Host authorization ceiling; Strategies can only narrow it. Management remains separately authorized. */
   sourceCapabilities?: (source: InstalledMemorySource) => readonly MemoryCapability[]
   strategyInstanceKey?: string
@@ -456,9 +460,11 @@ export class MemoryCompositionGeneration {
   private routeCalls = new WeakMap<object, Map<string, number>>()
   private strategyTurns = new WeakMap<object, MemoryStrategyTurn>()
   private readonly sourceTimeoutMs: number
+  private readonly observer: MemoryOperationObserver | undefined
   private disposed = false
 
   constructor(snapshotValue: MemoryContributionSnapshot, options: CompileMemoryGenerationOptions = {}) {
+    this.observer = options.observeOperation
     const snapshot = captureMemoryContributionSnapshot(snapshotValue)
     if (snapshot.sources.length === 0) throw new Error('memory composition requires at least one Source')
     if (snapshot.strategies.length === 0) throw new Error('memory composition requires a Strategy')
@@ -769,10 +775,15 @@ export class MemoryCompositionGeneration {
       ...(requestValue.signal === undefined ? {} : { signal: requestValue.signal }),
     }
     const result = await source.runtime.manage(request)
-    return jsonClone({
+    const normalized = jsonClone({
       revision: requiredText(result.revision, 'memory Source management result revision', 500),
       value: result.value,
     }, 'memory Source management result')
+    if (request.mode === 'mutate') this.observe(source, {
+      scope: request.scope, operation, kind: 'management', actor: 'operator', revision: normalized.revision,
+      recordIds: operationRecordIds(request.input),
+    })
+    return normalized
   }
 
   async executeRoute(view: ComposableMemoryView, routeId: string, input: MemoryJsonValue, signal?: AbortSignal, budget: MemoryViewBudget = DEFAULT_MEMORY_VIEW_BUDGET, execution: object = view): Promise<MemoryEvidence> {
@@ -825,7 +836,10 @@ export class MemoryCompositionGeneration {
         route: boundedRoute, input: jsonClone(input, 'memory Strategy input'), ...(signal === undefined ? {} : { signal }),
       }, read)
       signal?.throwIfAborted()
-      return normalizeEvidence(value, view, boundedRoute, executionBudget, this.now)
+      const evidence = normalizeEvidence(value, view, boundedRoute, executionBudget, this.now)
+      this.observe(source, { scope: view.scope, viewId: view.id, operation: route.sourceRouteId,
+        kind: 'read', actor: 'model', recordIds: evidence.items.map(item => item.id).slice(0, 32) })
+      return evidence
     } finally { active = false }
   }
 
@@ -854,10 +868,24 @@ export class MemoryCompositionGeneration {
       if (receipt.status !== 'succeeded' || typeof receipt.committedAt !== 'string' || !Number.isFinite(Date.parse(receipt.committedAt))) throw new Error('committed memory Receipt requires successful status and an explicit commit timestamp')
     } else if (receipt.committedAt !== undefined) throw new Error('uncommitted memory Receipt cannot claim a commit timestamp')
     if (receipt.completion === 'failed' && receipt.status === 'succeeded') throw new Error('failed memory completion cannot have successful status')
-    return jsonClone({
+    const normalized = jsonClone({
       ...receipt,
       id: requiredText(receipt.id, 'memory mutation Receipt id', 500),
     }, 'memory mutation Receipt')
+    this.observe(source, { scope: view.scope, viewId: view.id, operation: offer.sourceActionId,
+      kind: 'mutation', actor: 'model', recordIds: operationRecordIds(receipt.details, input),
+      status: receipt.status, completion: receipt.completion,
+      ...(receipt.revision === undefined ? {} : { revision: receipt.revision }),
+    })
+    return normalized
+  }
+
+  private observe(source: RuntimeSource, value: Omit<MemoryOperationObservation, 'id' | 'occurredAt' | 'sourceInstanceKey' | 'sourceTypeId'>): void {
+    if (!this.observer) return
+    const observation = deepFreeze(jsonClone({ ...value, id: randomUUID(), occurredAt: this.now().toISOString(),
+      sourceInstanceKey: source.installed.instanceKey, sourceTypeId: source.installed.definition.manifest.typeId,
+    }, 'memory operation observation'))
+    try { this.observer(observation) } catch {}
   }
 
   async dispose(): Promise<void> {
@@ -883,6 +911,14 @@ export class MemoryCompositionGeneration {
   private assertOpen(): void {
     if (this.disposed) throw new Error(`memory runtime generation is disposed: ${this.id}`)
   }
+}
+
+function operationRecordIds(...values: Array<MemoryJsonValue | undefined>): string[] {
+  for (const value of values) if (value && typeof value === 'object' && !Array.isArray(value)) {
+    const recordId = value.recordId ?? value.id
+    if (typeof recordId === 'string' && recordId.length > 0 && recordId.length <= 500) return [recordId]
+  }
+  return []
 }
 
 export interface MemoryCompositionRunnerInput {

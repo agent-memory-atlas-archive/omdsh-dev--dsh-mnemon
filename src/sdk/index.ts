@@ -1,4 +1,6 @@
 export { installMemory } from './install.ts'
+export { observeMemoryOperations } from './observations.ts'
+export type { MemoryOperationObservation, MemoryOperationObserver } from '../core/contracts/observations.ts'
 export type { MnemonMemoryService, InstallMemoryOptions, MemoryInstallContribution } from './service.ts'
 export { defineMemoryPlugin, defineMemorySource, defineMemoryStrategy, defineMemoryStrategyExtension } from '../core/definitions.ts'
 export { record as memoryInputRecord, text as memoryInputText, integer as memoryInputInteger, stringArray as memoryInputStringArray, truncate as truncateMemoryText, receipt as createMemoryMutationReceipt, migrationLineage as memoryInputMigrationLineage } from './input.ts'

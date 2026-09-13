@@ -62,3 +62,4 @@ export interface MemoryWake {
 export * from './plugin.ts'
 export * from './view.ts'
 export * from './transfer.ts'
+export * from './observations.ts'

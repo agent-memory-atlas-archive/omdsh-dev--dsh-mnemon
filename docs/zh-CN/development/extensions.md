@@ -220,3 +220,7 @@ RSI 应保存可复现候选输入/制品，对照已知组合评估，经明确
 `dsh-mnemon/contracts` 导出 `MemoryTransferCatalog`、`MemoryTransferTrack` 和 `MemoryTransferSnapshot`，它们定义可选的人类管理协议：`transfer-catalog` 列出 Source 支持的轨道；`transfer-export` 返回指定轨道的快照；`transfer-import` 接收 `{ snapshot }`，要求显式确认和最新 Source 版本。导入返回规范化后的快照与版本，使协调页面能在中断后核对已有回执再继续。
 
 条目校验、作用域重新绑定、幂等性、容量与恢复历史均由数据所属 Source 负责。快照不能导入本机权限、文件系统根目录、运行时对象或另一 Source 的版本号。记录类 Source 可通过 `dsh-mnemon-workspace-kit` 的 `transfer: true` 选用此协议；会话轨道不参与，删除由明确状态表达，缺少条目会保留本机内容。独立同步 Source 仅使用公开客户端、自有计划和 Git 裸仓库；Host 与 Strategy 无需维护同步业务注册表。
+
+### 可选的操作观察
+
+`observeMemoryOperations(ctx, observer)` 订阅 Core 在成功派发操作后生成的不可变元数据，生命周期绑定安装插件的 Fiber。事件包含作用域、Source 与操作标识、受限的记录标识，以及实际写入回执中的状态和完成程度；不包含输入、提示词、记录正文或授权凭据，也不授予执行权限。读取只表示内容被提供，不能证明已被使用或有帮助；管理操作完成也不代表产生了已提交的记忆回执。观察者应将持久化工作放入自己的受限队列并处理失败，不得使已经完成的操作失效。业务含义与反馈策略由可选的 Source 和 Strategy 插件负责。
