@@ -40,9 +40,13 @@ const relativeReadmeImages = readmeFiles.flatMap((path) => {
     .map(source => `${path}: ${source}`)
 })
 
-// Core/Host, public declarations, shared UI and bounded legacy Session repair.
-// Source and Provider implementations remain in their own artifacts.
-const maximumUnpackedBytes = 1_400_000
+// Core/Host, public declarations, shared UI and the bounded legacy Session
+// copy-repair executable. Source implementations remain separate artifacts.
+// Runtime archive preflight and compensation add bounded Host recovery code.
+// The review publication/guard helper adds about 4 KB of Host-only code.
+// Shared plugin editing and theme declarations add about 8 KB. Markdown still
+// comes from the host's public renderer, rather than another bundled parser.
+const maximumUnpackedBytes = 1_425_000
 
 if (missing.length > 0 || unexpected.length > 0 || hostLeaks.length > 0 || relativeReadmeImages.length > 0 || pack.unpackedSize > maximumUnpackedBytes) {
   if (missing.length > 0) console.error(`Missing package files:\n${missing.map(path => `- ${path}`).join('\n')}`)
