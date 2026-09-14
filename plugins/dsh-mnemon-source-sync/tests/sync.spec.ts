@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import type { MemoryOperationScope, MemoryTransferSnapshot } from 'dsh-mnemon/contracts'
-import { json } from 'dsh-mnemon-workspace-kit'
+import { json } from 'dsh-mnemon/source-sdk'
 import { MemoryCompositionRunner } from 'dsh-mnemon/testing'
 import * as workspace from 'dsh-mnemon-strategy-workspace'
 import * as sync from '../src/index.ts'
@@ -140,7 +140,11 @@ it('exposes scoped human operations through real Core without granting model syn
     expect((await other.read('status')).value).toMatchObject({ targets: [] })
     const unrelated = await runner.managementClient('source:sync-a', { ...f.scope, workspaceId: join(f.root, 'other') })
     await expect(unrelated.read('plan', { id: targetId })).rejects.toThrow('not available')
-    await expect(runner.beginTurn({ scope: f.scope })).rejects.toThrow('Ambiguous')
+    const shared = await runner.beginTurn({ scope: f.scope })
+    expect(shared.view.projection).toHaveLength(2)
+    expect(shared.view.routes).toEqual([])
+    expect(shared.view.actionOffers).toEqual([])
+    shared.release()
     await disposeB()
     const turn = await runner.beginTurn({ scope: f.scope })
     expect(turn.view.routes).toEqual([]); expect(turn.view.actionOffers).toEqual([])

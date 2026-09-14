@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type { MemoryJsonValue, MemoryOperationScope } from 'dsh-mnemon/contracts'
-import { digest, newRecord, RecordStore, reviseRecord, visibleRecord, type RecordValue } from 'dsh-mnemon-workspace-kit'
+import { digest, newRecord, RecordStore, reviseRecord, visibleRecord, type RecordValue } from 'dsh-mnemon/source-sdk'
 import type { VisibleMessage } from 'dsh-mnemon-workspace-kit/dsh'
 export const severities = ['info', 'nit', 'concern', 'blocker'] as const
 export interface ReviewResult { severity: typeof severities[number]; summary: string; issues: Array<{ severity: typeof severities[number]; text: string }>; proposals: Array<{ kind: 'fact' | 'decision'; title: string; content: string }>; skill?: { title: string; content: string; slug: string } }

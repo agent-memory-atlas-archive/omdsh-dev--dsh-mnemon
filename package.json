@@ -60,6 +60,9 @@
       ],
       "extension-sdk": [
         "lib/types/src/sdk/index.d.ts"
+      ],
+      "source-sdk": [
+        "lib/types/src/sdk/source/index.d.ts"
       ]
     }
   },
@@ -88,7 +91,11 @@
       "types": "./lib/types/src/sdk/testing.d.ts",
       "default": "./lib/testing.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./source-sdk": {
+      "types": "./lib/types/src/sdk/source/index.d.ts",
+      "default": "./lib/source-sdk.js"
+    }
   },
   "files": [
     "lib",
@@ -180,7 +187,9 @@
     "dsh-mnemon-source-learning": "0.1.0",
     "dsh-mnemon-strategy-learning-cycle": "0.1.0",
     "semver": "^7.8.5",
-    "dsh-mnemon-strategy-skill-refinement": "0.1.0"
+    "dsh-mnemon-strategy-skill-refinement": "0.1.0",
+    "proper-lockfile": "^4.1.2",
+    "@vscode/ripgrep": "1.18.0"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
@@ -250,7 +259,8 @@
     "tsdown": "^0.22.0",
     "typescript": "^5.9.0",
     "vitest": "^3.2.0",
-    "@types/semver": "^7.7.1"
+    "@types/semver": "^7.7.1",
+    "@types/proper-lockfile": "^4.1.4"
   },
   "bin": {
     "dsh-mnemon-repair-session": "bin/repair-legacy-session.mjs"

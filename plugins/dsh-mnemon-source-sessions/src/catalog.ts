@@ -1,6 +1,6 @@
 import type { LlmRuntime, LlmResolvedModelInfo } from '@deepseek-ai/dsh-llm'
 import { memoryInputInteger, memoryInputText } from 'dsh-mnemon/extension-sdk'
-import { json, type LookupResult } from 'dsh-mnemon-workspace-kit'
+import { json, type LookupResult } from 'dsh-mnemon/source-sdk'
 import type { MemoryJsonValue } from 'dsh-mnemon/contracts'
 
 /** Publish only provider-owned display metadata. Credentials and transport configuration stay private. */

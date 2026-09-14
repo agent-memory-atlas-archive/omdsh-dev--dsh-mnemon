@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MemorySourcePageProps } from 'dsh-mnemon/client'
 import type { MemoryJsonValue } from 'dsh-mnemon/contracts'
-import type { AssetInput, AssetReference, RecordSnapshot, RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { AssetInput, AssetReference, RecordSnapshot, RecordValue } from 'dsh-mnemon/source-sdk'
 
 function Attachment({ record, reference, ...props }: MemorySourcePageProps & { record: RecordValue; reference: AssetReference }) {
   const zh = props.locale.startsWith('zh'), [url, setUrl] = useState(''), [text, setText] = useState(''), [error, setError] = useState('')

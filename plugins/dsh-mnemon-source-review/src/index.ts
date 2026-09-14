@@ -1,10 +1,12 @@
+// Import the optional DSH activity-bus declaration independently of storage helpers.
+import type {} from 'dsh-mnemon-workspace-kit'
 import type { Context } from '@deepseek-ai/cordis'
 import { createAssistantMessage, createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import z from 'schemastery'
 import type { MemoryJsonValue, MemorySourceDefinition } from 'dsh-mnemon/contracts'
 import { defineMemoryPlugin, installMemory, memoryConfigurationDigest, memoryInputRecord } from 'dsh-mnemon/extension-sdk'
-import { createRecordSource, digest, json, reviseRecord, sourceRecordDirectory, visibleRecord, type RecordSourceOptions } from 'dsh-mnemon-workspace-kit'
+import { createRecordSource, digest, json, reviseRecord, sourceRecordDirectory, visibleRecord, type RecordSourceOptions } from 'dsh-mnemon/source-sdk'
 import { agentMemoryScope, DshWorkspaceAdapter, installAgentHooks } from 'dsh-mnemon-workspace-kit/dsh'
 import { countReviewRound, completeReviewCycle, ReviewEngine, type ReviewPort } from './engine.ts'
 export const name = 'dsh-mnemon-source-review'
@@ -12,7 +14,7 @@ export const inject = ['mnemonMemory', 'agentPresets', 'agents', 'sessionQuery',
 export interface Config { dataDir?: string; interval?: number; provider?: string; model?: string; instanceConstraints?: string }
 export const Config = z.object({ dataDir: z.string(), interval: z.number().default(5), provider: z.string(), model: z.string(), instanceConstraints: z.string() }) as z<Config>
 export const memoryPlugin = defineMemoryPlugin({ packageName: name, label: { en: 'Conversation review', 'zh-CN': '会话审核' }, description: { en: 'Independent reviews and durable review cycles with explicit completion.', 'zh-CN': '独立审核与需要显式完成的持久审核周期。' }, roles: ['source'], provides: [{ id: 'source' }, { id: 'source.conversation-review' }] })
-const options: RecordSourceOptions = {
+const options: RecordSourceOptions = { context: {"mode":"routed","weight":1} satisfies import('dsh-mnemon/contracts').MemoryContextProfile,
   typeId: 'review', role: 'conversation-review', label: 'Conversation review', description: 'Visible conversation reviews, layered constraints and explicit review completion.', kinds: ['constraint', 'cycle', 'review'], scopes: ['global', 'project', 'session'], defaultScope: 'session', scopeForKind: { cycle: 'session', review: 'session' },
   prepare(record) {
     if (record.kind === 'review') throw new Error('Review results are created by the independent reviewer')
@@ -27,7 +29,7 @@ const options: RecordSourceOptions = {
   project(records) {
     return records.filter(record => record.kind === 'cycle').map(record => `Review cycle ${record.id}: ${record.data.due ? 'DUE: review and explicitly complete the cycle' : 'not due'}; ${String(record.data.rounds)} user rounds, last completed at ${String(record.data.completedRound)}. Read the independent reviewer findings before acknowledging completion; proposed improvements require approval.`).join('\n') + '\nLatest review: ' + records.filter(record => record.kind === 'review').slice(-1).map(record => record.title + ' · ' + String(record.data.severity ?? record.data.status)).join('')
   },
-  modelActions: [{ id: 'complete-cycle', description: 'Explicitly complete a due review cycle after reviewing its findings and handling proposals.', capability: 'write', inputSchema: { type: 'object', required: ['id'], properties: { id: { type: 'string' } }, additionalProperties: false } }],
+  modelActions: [{ operation: {"effects":["update"],"execution":"immediate","requiresReadGrant":true} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics, id: 'complete-cycle', description: 'Explicitly complete a due review cycle after reviewing its findings and handling proposals.', capability: 'write', inputSchema: { type: 'object', required: ['id'], properties: { id: { type: 'string' } }, additionalProperties: false } }],
   mutate(operation, input, { records, scope }) {
     const cycle = records.find(record => record.id === input.id && record.kind === 'cycle' && visibleRecord(record, scope))
     if (operation !== 'complete-cycle' || !cycle) throw new Error('Choose the current session review cycle')

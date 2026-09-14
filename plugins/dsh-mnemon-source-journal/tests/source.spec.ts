@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { RecordValue } from 'dsh-mnemon/source-sdk'
 import { sourceOptions } from '../src/source.ts'
 const value = (data: Record<string, any> = {}): RecordValue => ({ id: 'sample', kind: 'progress', title: 'Sample', content: 'Content', scope: 'project', workspaceId: '/project-a', state: 'active', data, signals: 1, version: 1, createdAt: '2026-09-09T00:00:00.000Z', updatedAt: '2026-09-09T00:00:00.000Z', history: [] })
 describe('journal', () => {

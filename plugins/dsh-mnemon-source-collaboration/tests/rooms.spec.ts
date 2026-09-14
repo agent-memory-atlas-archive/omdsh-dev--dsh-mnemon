@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { newRecord } from 'dsh-mnemon-workspace-kit'
+import { newRecord } from 'dsh-mnemon/source-sdk'
 import { changeMembership, prepareMessage, reserveFile, validateCollaborationRecord } from '../src/rooms.ts'
 const scope = { storage: 'custom' as const, workspaceId: '/project', sessionId: 'creator' }
 const room = () =>

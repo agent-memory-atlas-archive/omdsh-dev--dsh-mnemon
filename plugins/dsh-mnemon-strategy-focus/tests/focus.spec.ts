@@ -7,9 +7,9 @@ it('keeps selection pure, distinguishes empty from unset, and captures configura
   const config = { sourceKeys: ['source:b', 'source:a'], writableSourceKeys: ['source:b'], maxProjectionCharacters: 512 }
   const extension = createFocusExtension(config)
   config.sourceKeys.reverse(); config.writableSourceKeys.push('source:a')
-  expect(extension.contribute(request, [source('a'), source('b')])).toEqual({ sourceKeys: ['source:b', 'source:a'], writableSourceKeys: ['source:b'], maxProjectionCharacters: 512 })
-  expect(createFocusExtension({ sourceKeys: [] }).contribute(request, [source('a')])).toMatchObject({ sourceKeys: [] })
-  expect(createFocusExtension().contribute(request, [source('b'), source('a')])).toMatchObject({ sourceKeys: ['source:a', 'source:b'] })
+  expect(extension.contribute(request, [source('a'), source('b')])).toMatchObject({ selection: { sourceKeys: ['source:b', 'source:a'], writableSourceKeys: ['source:b'], maxProjectionCharacters: 512 } })
+  expect(createFocusExtension({ sourceKeys: [] }).contribute(request, [source('a')])).toMatchObject({ selection: { sourceKeys: [] } })
+  expect(createFocusExtension().contribute(request, [source('b'), source('a')])).toMatchObject({ selection: { sourceKeys: ['source:a', 'source:b'] } })
 })
 it('rejects invalid budgets, duplicate keys and expansion of the writable subset', () => {
   for (const maxProjectionCharacters of [0, -1, 65537, 1.5, NaN]) expect(() => createFocusExtension({ maxProjectionCharacters })).toThrow()

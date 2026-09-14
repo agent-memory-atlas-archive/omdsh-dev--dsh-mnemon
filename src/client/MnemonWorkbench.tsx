@@ -128,6 +128,7 @@ function SourceManagementPage(props: {
   onMutate(): void
 }): JSX.Element {
   const t = useT()
+  const locale = useLocale()
   const fields = props.instance.management.fields ?? EMPTY_SOURCE_MANAGEMENT_FIELDS
   const [draft, setDraft] = useState<Record<string, JsonValue>>({})
   const [loading, setLoading] = useState(false)
@@ -195,6 +196,7 @@ function SourceManagementPage(props: {
       {...(loading ? { loadingLabel: t('sourcePage.configLoading') } : {})}
     />
     {props.instances.length > 1 && <label className={css.workspacePicker}><span>{t('sourcePage.instance')}</span><select aria-label={t('sourcePage.instanceAria')} value={props.instance.sourceInstanceKey} onChange={event => props.onSelect(event.target.value)}>{props.instances.map(instance => <option key={instance.sourceInstanceKey} value={instance.sourceInstanceKey}>{instance.management.label} · {instance.sourceInstanceKey}</option>)}</select></label>}
+    <MemoryAccessSummary inventory={props.instance.operations} management={props.instance.management.operations} context={props.instance.context} locale={locale} />
     <section className={css.sourceManagementSummary} data-availability={props.instance.availability} aria-label={t('sourcePage.summaryAria')}>
       <div className={css.sourceManagementIdentity}><span aria-hidden="true" /><div><small>{t('sourcePage.package')}</small><strong>{props.instance.packageName}</strong><code>{props.instance.sourceInstanceKey}</code></div></div>
       <dl>
@@ -553,6 +555,7 @@ function MnemonWorkspace({ connection, settingsScope, sessionId, workspaceId, wo
   const activeSelectedInstance = activeSourceInstances.find(instance => instance.sourceInstanceKey === activeSelectedKey) ?? activeSourceInstances.find(instance => isDefaultSourceInstance(instance.sourceInstanceKey, activeSourcePage?.sourceTypeId ?? '')) ?? activeSourceInstances[0]
   const customSourcePage = activeSourcePage === undefined || activeSelectedInstance === undefined ? null : <div data-source-page={activeSourcePage.id}>
     {activeSourceInstances.length > 1 && <label className={css.workspacePicker}><span>{t('sourcePage.instance')}</span><select aria-label={t('sourcePage.instanceAria')} value={activeSelectedInstance.sourceInstanceKey} onChange={event => setSelectedSourceInstances(current => ({ ...current, [activeSourcePage.sourceTypeId]: event.target.value }))}>{activeSourceInstances.map(instance => <option key={instance.sourceInstanceKey} value={instance.sourceInstanceKey}>{instance.management.label} · {instance.sourceInstanceKey}</option>)}</select></label>}
+    <MemoryAccessSummary inventory={activeSelectedInstance.operations} management={activeSelectedInstance.management.operations} context={activeSelectedInstance.context} locale={locale} compact />
     {renderSourceContribution(activeSourcePage.id)}
   </div>
   const activeManagedSourceTypeId = managedSourceTypeId(page)
@@ -601,3 +604,4 @@ function MnemonWorkspace({ connection, settingsScope, sessionId, workspaceId, wo
     </main>
   )
 }
+import { MemoryAccessSummary } from './context-access.tsx'

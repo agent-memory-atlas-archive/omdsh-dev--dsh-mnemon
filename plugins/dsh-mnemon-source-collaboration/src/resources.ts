@@ -1,7 +1,7 @@
 import { realpath, stat } from 'node:fs/promises'
 import { basename, dirname, join, resolve } from 'node:path'
 import type { MemoryJsonValue, MemoryOperationScope } from 'dsh-mnemon/contracts'
-import { newRecord, reviseRecord, visibleRecord, withinRoot, type RecordValue } from 'dsh-mnemon-workspace-kit'
+import { newRecord, reviseRecord, visibleRecord, withinRoot, type RecordValue } from 'dsh-mnemon/source-sdk'
 import { actor, members, roomFor } from './rooms.ts'
 
 export interface ProjectFile { path: string; key: string }

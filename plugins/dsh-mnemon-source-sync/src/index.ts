@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from 'schemastery'
 import { COMPOSABLE_MEMORY_API_VERSION, type MemorySourceDefinition } from 'dsh-mnemon/contracts'
 import { defineMemoryPlugin, defineMemorySource, installMemory, memoryConfigurationDigest, memoryInputRecord, truncateMemoryText } from 'dsh-mnemon/extension-sdk'
-import { sourceRecordDirectory, visibleRecord } from 'dsh-mnemon-workspace-kit'
+import { sourceRecordDirectory, visibleRecord } from 'dsh-mnemon/source-sdk'
 import { SyncEngine, type SyncConfig } from './engine.ts'
 export const name = 'dsh-mnemon-source-sync'
 export const inject = ['mnemonMemory']
@@ -10,7 +10,7 @@ export type Config = SyncConfig
 export const Config = z.object({ dataDir: z.string(), allowLocalRemotes: z.boolean().default(false) }) as z<Config>
 export const memoryPlugin = defineMemoryPlugin({ packageName: name, label: { en: 'Memory synchronization', 'zh-CN': '记忆同步' }, description: { en: 'Review independent snapshots and resolve cross-device changes.', 'zh-CN': '审阅独立快照，处理跨设备修改与冲突。' }, roles: ['source'], provides: [{ id: 'source' }, { id: 'source.memory-sync' }] })
 export function createSyncSource(config: Config = {}): MemorySourceDefinition {
-  return defineMemorySource({ manifest: { apiVersion: COMPOSABLE_MEMORY_API_VERSION, kind: 'source', typeId: 'sync', packageName: name, role: 'memory-sync', consistency: 'exact-snapshot', capabilities: ['status', 'project'], management: { label: 'Memory synchronization', description: 'Human-reviewed snapshots, conflict decisions and explicit push.' }, routes: [], actions: [] }, create(context) {
+  return defineMemorySource({ manifest: { context: {"mode":"routed","weight":1} satisfies import('dsh-mnemon/contracts').MemoryContextProfile, apiVersion: COMPOSABLE_MEMORY_API_VERSION, kind: 'source', typeId: 'sync', packageName: name, role: 'memory-sync', consistency: 'exact-snapshot', capabilities: ['status', 'project'], management: { label: 'Memory synchronization', description: 'Human-reviewed snapshots, conflict decisions and explicit push.', operations: { reads: [{ id: 'plan', description: 'Inspect snapshot differences and unresolved conflicts.', access: { kinds: ['read'], result: 'records' } }, { id: 'push-plan', description: 'Review the exact destination and snapshot before transmission.', access: { kinds: ['read'], result: 'records' } }], actions: [{ id: 'prepare', description: 'Prepare an independent snapshot for review.', requiresApproval: true, operation: { effects: ['propose'], execution: 'immediate' } }, { id: 'push', description: 'Transmit the exact reviewed snapshot to its configured destination.', requiresApproval: true, operation: { effects: ['transfer', 'deliver'], execution: 'immediate' } }] } }, routes: [], actions: [] }, create(context) {
     const engine = new SyncEngine(sourceRecordDirectory('sync', context, config), config)
     return {
       async facts(request, signal) { const value = await engine.store.read(signal); return { sourceInstanceKey: context.sourceInstanceKey, sourceTypeId: 'sync', role: 'memory-sync', revision: value.revision, availability: 'ready', capabilities: ['status', 'project'], routeIds: [], actionIds: [], hints: { targets: value.records.filter(record => visibleRecord(record, request.scope)).length } } },

@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { randomUUID } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { JobEngine, preparePlan, type JobConfig } from '../src/engine.ts'
-import type { RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { RecordValue } from 'dsh-mnemon/source-sdk'
 import { contextCaptures } from '../src/inputs.ts'
 const waitFor = async (engine: JobEngine, id: string, states: string[]) => {
   for (let n = 0; n < 120; n++) { const record = (await engine.store.read()).records.find(value => value.id === id)!; if (states.includes(String(record.data.status))) return record; await new Promise(resolve => setTimeout(resolve, 25)) }

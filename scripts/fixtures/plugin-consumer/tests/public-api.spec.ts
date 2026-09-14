@@ -2,6 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { describe, expect, expectTypeOf, it } from 'vitest'
 import * as core from 'dsh-mnemon/core'
 import * as sdk from 'dsh-mnemon/extension-sdk'
+import { assertMemoryOperationPlan, MemoryReadCoverage, memoryReadCursor, memoryReadOffset } from 'dsh-mnemon/source-sdk'
 import type { MnemonMemoryService, MemorySourceRuntime } from 'dsh-mnemon/extension-sdk'
 import { MemoryCompositionRunner, type MemoryTestTurn } from 'dsh-mnemon/testing'
 import * as providerSdk from 'dsh-mnemon-source-memory-spaces/provider-sdk'
@@ -17,6 +18,17 @@ import type { InstalledMemorySource } from 'dsh-mnemon/contracts'
 import type { PrivateMemorySpaceProviderHost } from 'dsh-mnemon-source-memory-spaces/provider-sdk'
 
 describe('published author API', () => {
+  it('uses scoped read and operation mechanics from the packed Source SDK', () => {
+    const resource = { id: 'external-resource', revision: 'v1', path: 'evidence.json' }
+    const coverage = new MemoryReadCoverage()
+    expect(coverage.observe('view-a', resource, { start: 0, end: 8, total: 16 })).toBe(false)
+    expect(coverage.observe('view-b', resource, { start: 8, end: 16, total: 16 })).toBe(false)
+    expect(coverage.observe('view-a', resource, { start: 8, end: 16, total: 16 })).toBe(true)
+    const cursor = memoryReadCursor({ resource, query: 'example', view: 'view-a' }, 8)
+    expect(memoryReadOffset(cursor, { view: 'view-a', query: 'example', resource })).toBe(8)
+    expect(() => memoryReadOffset(cursor, { resource, query: 'example', view: 'view-b' })).toThrow('different query or snapshot')
+    expect(() => assertMemoryOperationPlan({ destination: 'a' }, { destination: 'b' })).toThrow('plan changed')
+  })
   it('resolves Source configuration through the packed package without a Host', () => {
     expect(resolveRecallQuality(undefined)).toMatchObject({ policy: 'strict-v1', candidateMultiplier: 3 })
     expect(resolveEmbedding({ endpoint: ' https://embedding.example.test/// ' }).endpoint).toBe('https://embedding.example.test')

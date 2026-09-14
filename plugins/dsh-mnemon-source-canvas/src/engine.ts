@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { basename, isAbsolute, join, resolve } from 'node:path'
 import type { MemoryJsonValue, MemoryOperationScope } from 'dsh-mnemon/contracts'
 import { memoryInputRecord, memoryInputText } from 'dsh-mnemon/extension-sdk'
-import { allowedDirectories, allowedFile, AssetStore, detectAssetType, digest, json, readBoundedFile, RecordStore, recordScope, reviseRecord, runBoundedProcess, validateRecord, visibleRecord, type AssetInput, type AssetReference, type RecordScope, type RecordValue } from 'dsh-mnemon-workspace-kit'
+import { allowedDirectories, allowedFile, AssetStore, detectAssetType, digest, json, readBoundedFile, RecordStore, recordScope, reviseRecord, runBoundedProcess, validateRecord, visibleRecord, type AssetInput, type AssetReference, type RecordScope, type RecordValue } from 'dsh-mnemon/source-sdk'
 export interface CanvasConfig { dataDir?: string; roots?: string[]; maxFileBytes?: number; openLocalFiles?: boolean }
 export type CanvasView = 'session' | 'project' | 'all'
 export interface Geometry { x: number; y: number; width: number; height: number }

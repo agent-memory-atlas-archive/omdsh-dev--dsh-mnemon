@@ -1,4 +1,4 @@
-import { allowedDirectories, readBoundedFile, resolveRipgrepPath, runBoundedProcess, digest } from 'dsh-mnemon-workspace-kit'
+import { allowedDirectories, readBoundedFile, resolveRipgrepPath, runBoundedProcess, digest } from 'dsh-mnemon/source-sdk'
 import type { VisibleMessage } from 'dsh-mnemon-workspace-kit/dsh'
 import { resolve } from 'node:path'
 

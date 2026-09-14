@@ -2,7 +2,7 @@ import { mkdtemp } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
-import { RecordStore, newRecord } from 'dsh-mnemon-workspace-kit'
+import { RecordStore, newRecord } from 'dsh-mnemon/source-sdk'
 import { countReviewRound, completeReviewCycle, parseReview, ReviewEngine, type ReviewPort } from '../src/engine.ts'
 const scope = { storage: 'custom' as const, workspaceId: '/project', sessionId: 'session' }
 const answer = JSON.stringify({ severity: 'concern', summary: 'Check the claimed outcome', issues: [{ severity: 'concern', text: 'No visible test result is supplied.' }], proposals: [] })

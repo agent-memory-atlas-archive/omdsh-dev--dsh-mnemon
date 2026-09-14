@@ -6,7 +6,7 @@ import { MemoryCompositionRunner } from 'dsh-mnemon/testing'
 import * as workspace from 'dsh-mnemon-strategy-workspace'
 import * as canvas from '../src/index.ts'
 import { CanvasEngine, boardVisible } from '../src/engine.ts'
-import type { RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { RecordValue } from 'dsh-mnemon/source-sdk'
 const directories: string[] = []
 const directory = async () => { const path = await mkdtemp(join(tmpdir(), 'mnemon-canvas-')); directories.push(path); return path }
 afterEach(async () => { for (const path of directories.splice(0)) await rm(path, { recursive: true, force: true }) })

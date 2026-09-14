@@ -53,8 +53,8 @@ export function createMemoryWake(view: ComposableMemoryView, bindings: MemoryWak
     return {
       source: sourceInstanceKey,
       ...(cover === undefined ? {} : { cover }),
-      routes: view.routes.filter(route => route.sourceInstanceKey === sourceInstanceKey && !bindings.routes?.[route.id]).map(route => ({ id: route.id, description: route.description, inputSchema: route.inputSchema })),
-      actions: view.actionOffers.filter(offer => offer.sourceInstanceKey === sourceInstanceKey && !bindings.actions?.[offer.id]).map(offer => ({ id: offer.id, description: offer.description, inputSchema: offer.inputSchema })),
+      routes: view.routes.filter(route => route.sourceInstanceKey === sourceInstanceKey && !bindings.routes?.[route.id]).map(route => ({ id: route.id, description: route.description, inputSchema: route.inputSchema, ...(route.access ? { access: route.access } : {}) })),
+      actions: view.actionOffers.filter(offer => offer.sourceInstanceKey === sourceInstanceKey && !bindings.actions?.[offer.id]).map(offer => ({ id: offer.id, description: offer.description, inputSchema: offer.inputSchema, ...(offer.operation ? { operation: offer.operation } : {}) })),
     }
   }).filter(source => source.routes.length > 0 || source.actions.length > 0 || (source.cover !== undefined && !view.routes.some(route => route.sourceInstanceKey === source.source && bindings.routes?.[route.id])))
   const namedTools = [...new Set([

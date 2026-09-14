@@ -1,10 +1,10 @@
-import { recordScope, reviseRecord, today, visibleRecord, type RecordSourceOptions } from 'dsh-mnemon-workspace-kit'
-export const sourceOptions: RecordSourceOptions = {
+import { recordScope, reviseRecord, today, visibleRecord, type RecordSourceOptions } from 'dsh-mnemon/source-sdk'
+export const sourceOptions: RecordSourceOptions = { context: {"mode":"routed","weight":1} satisfies import('dsh-mnemon/contracts').MemoryContextProfile,
   transfer: true,
   typeId: 'tasks', role: 'task-context', label: 'Tasks', description: 'Scoped tasks, priorities, deadlines and completion history.',
   kinds: ['personal', 'work', 'project', 'daily'], scopes: ['global', 'project', 'daily'], defaultScope: 'project',
   scopeForKind: { personal: 'global', work: 'global', project: 'project', daily: 'daily' },
-  modelActions: [{ id: 'set-status', capability: 'write', description: 'Update the status of an approved task read in this View. Does not approve, delete or replace tasks.', inputSchema: { type: 'object', additionalProperties: false, required: ['id', 'status'], properties: { id: { type: 'string' }, status: { type: 'string', enum: ['pending', 'in-progress', 'done', 'blocked', 'cancelled'] } } } }],
+  modelActions: [{ operation: {"effects":["update"],"execution":"immediate","requiresReadGrant":true} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics, id: 'set-status', capability: 'write', description: 'Update the status of an approved task read in this View. Does not approve, delete or replace tasks.', inputSchema: { type: 'object', additionalProperties: false, required: ['id', 'status'], properties: { id: { type: 'string' }, status: { type: 'string', enum: ['pending', 'in-progress', 'done', 'blocked', 'cancelled'] } } } }],
   prepare(record, scope) {
     const target = record.kind === 'project' ? 'project' : record.kind === 'daily' ? 'daily' : 'global'
     delete record.workspaceId; delete record.sessionId

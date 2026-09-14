@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { COMPOSABLE_MEMORY_API_VERSION } from 'dsh-mnemon/contracts'
 import { defineMemoryStrategy, installMemory } from 'dsh-mnemon/extension-sdk'
 import { MemoryCompositionRunner } from 'dsh-mnemon/testing'
-import type { RecordSnapshot, RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { RecordSnapshot, RecordValue } from 'dsh-mnemon/source-sdk'
 import { createCollaborationSource } from '../src/index.ts'
 
 it('enforces addressed evidence, external approval, membership and pinned reservation versions through Core', async () => {

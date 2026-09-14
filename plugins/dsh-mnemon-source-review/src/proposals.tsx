@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MemorySourcePageProps } from 'dsh-mnemon/client'
-import type { RecordSnapshot, RecordValue } from 'dsh-mnemon-workspace-kit'
-import { collectionStyles, managementError } from 'dsh-mnemon-workspace-kit/client'
+import type { RecordSnapshot, RecordValue } from 'dsh-mnemon/source-sdk'
+import { collectionStyles, managementError } from 'dsh-mnemon/client'
 import type { ReviewResult } from './engine.ts'
 export function Proposals(props: MemorySourcePageProps) {
   const zh = props.locale.startsWith('zh'),

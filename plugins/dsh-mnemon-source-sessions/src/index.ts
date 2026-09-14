@@ -2,14 +2,14 @@ import { join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { LlmRuntime } from '@deepseek-ai/dsh-llm'
 import { createMemoryMutationReceipt } from 'dsh-mnemon/extension-sdk'
-import { RecordStore, sourceRecordDirectory, visibleRecord } from 'dsh-mnemon-workspace-kit'
+import { RecordStore, sourceRecordDirectory, visibleRecord } from 'dsh-mnemon/source-sdk'
 import { modelCatalog } from './catalog.ts'
 import { sessionActions, sessionOperation } from './operations.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import z from 'schemastery'
 import type { MemoryJsonValue, MemorySourceDefinition } from 'dsh-mnemon/contracts'
 import { defineMemoryPlugin, installMemory, memoryConfigurationDigest, memoryInputInteger, memoryInputRecord, memoryInputText } from 'dsh-mnemon/extension-sdk'
-import { allowedDirectories, createRecordSource, digest, json, withLookupRoutes, type LookupResult, type RecordSourceConfig } from 'dsh-mnemon-workspace-kit'
+import { allowedDirectories, createRecordSource, digest, json, withLookupRoutes, type LookupResult, type RecordSourceConfig } from 'dsh-mnemon/source-sdk'
 import { DshWorkspaceAdapter, type VisibleMessage } from 'dsh-mnemon-workspace-kit/dsh'
 import { importedSessions } from './imported.ts'
 
@@ -20,7 +20,7 @@ export const Config = z.object({ dataDir: z.string(), historyRoots: z.array(z.st
 export const memoryPlugin = defineMemoryPlugin({ packageName: name, label: { en: 'Conversations', 'zh-CN': '会话资料' }, description: { en: 'Visible conversation search, bookmarks and explicit session actions.', 'zh-CN': '可见对话检索、轮次书签和会话操作。' }, roles: ['source'], provides: [{ id: 'source' }, { id: 'source.session-history' }] })
 const queryProperties = { query: { type: 'string', maxLength: 1000 }, sessionId: { type: 'string' }, origin: { type: 'string', enum: ['all', 'native', 'imported'] }, sort: { type: 'string', enum: ['relevance', 'newest', 'oldest'] }, limit: { type: 'integer', minimum: 1, maximum: 100 }, active: { type: 'boolean' }, requestId: { type: 'string' } }
 export function createSessionsSource(config: Config = {}, adapter?: DshWorkspaceAdapter, llm?: LlmRuntime): MemorySourceDefinition {
-  const base = createRecordSource({ typeId: 'sessions', role: 'session-history', label: 'Conversation bookmarks', description: 'Scoped conversation references and aliases.', kinds: ['bookmark', 'alias'], scopes: ['project'], defaultScope: 'project',
+  const base = createRecordSource({ context: {"mode":"routed","weight":1} satisfies import('dsh-mnemon/contracts').MemoryContextProfile, typeId: 'sessions', role: 'session-history', label: 'Conversation bookmarks', description: 'Scoped conversation references and aliases.', kinds: ['bookmark', 'alias'], scopes: ['project'], defaultScope: 'project',
     validate(record) {
       if (typeof record.data.sessionId !== 'string' || !record.data.sessionId || record.data.sessionId.length > 200) throw new Error('A conversation id is required')
       if (record.kind === 'bookmark' && (!Number.isSafeInteger(record.data.seq) || Number(record.data.seq) < 0)) throw new Error('A valid conversation sequence is required')
@@ -28,12 +28,12 @@ export function createSessionsSource(config: Config = {}, adapter?: DshWorkspace
   }, config)
   const source = withLookupRoutes(base, {
     routes: [
-      { id: 'session-info', description: 'Read current or selected workspace conversation identity, title, preset, model, status and activity timestamp.', capability: 'status', inputSchema: { type: 'object', additionalProperties: false, properties: { sessionId: { type: 'string' } } }, maxCalls: 4, maxResults: 1, maxCharacters: 4000 },
-      { id: 'models', description: 'Read native model names, descriptions and image capability. Exact provider/model queries also report reasoning efforts and context capacity; null means unknown. The catalog is advisory, not an enablement list.', capability: 'status', inputSchema: { type: 'object', additionalProperties: false, properties: { provider: { type: 'string' }, model: { type: 'string' }, query: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 100 } } }, maxCalls: 4, maxResults: 30, maxCharacters: 14000 },
-      { id: 'presets', description: 'Discover native agent presets before creating a normal conversation.', capability: 'status', inputSchema: { type: 'object', additionalProperties: false, properties: {} }, maxCalls: 2, maxResults: 30, maxCharacters: 8000 },
-      { id: 'history', description: 'Search visible user and assistant messages within this workspace, including configured JSONL imports. Never returns thoughts or tool internals.', capability: 'recall', inputSchema: { type: 'object', additionalProperties: false, properties: queryProperties }, maxCalls: 6, maxResults: 20, maxCharacters: 14_000 },
-      { id: 'conversation', description: 'Read visible neighboring messages or completed turns in a workspace conversation.', capability: 'recall', inputSchema: { type: 'object', additionalProperties: false, required: ['sessionId'], properties: { sessionId: { type: 'string' }, seq: { type: 'integer', minimum: 0 }, radius: { type: 'integer', minimum: 0, maximum: 10 }, turns: { type: 'boolean' }, requestId: { type: 'string' } } }, maxCalls: 6, maxResults: 21, maxCharacters: 16_000 },
-      { id: 'list-sessions', description: 'List sessions in the current workspace and their live status.', capability: 'status', inputSchema: { type: 'object', additionalProperties: false, properties: { active: { type: 'boolean' }, requestId: { type: 'string' } } }, maxCalls: 3, maxResults: 30, maxCharacters: 6000 },
+      { access: {"kinds":["read"],"result":"records"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'session-info', description: 'Read current or selected workspace conversation identity, title, preset, model, status and activity timestamp.', capability: 'status', inputSchema: { type: 'object', additionalProperties: false, properties: { sessionId: { type: 'string' } } }, maxCalls: 4, maxResults: 1, maxCharacters: 4000 },
+      { access: {"kinds":["browse"],"result":"records"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'models', description: 'Read native model names, descriptions and image capability. Exact provider/model queries also report reasoning efforts and context capacity; null means unknown. The catalog is advisory, not an enablement list.', capability: 'status', inputSchema: { type: 'object', additionalProperties: false, properties: { provider: { type: 'string' }, model: { type: 'string' }, query: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 100 } } }, maxCalls: 4, maxResults: 30, maxCharacters: 14000 },
+      { access: {"kinds":["browse"],"result":"records"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'presets', description: 'Discover native agent presets before creating a normal conversation.', capability: 'status', inputSchema: { type: 'object', additionalProperties: false, properties: {} }, maxCalls: 2, maxResults: 30, maxCharacters: 8000 },
+      { access: {"kinds":["search"],"result":"events"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'history', description: 'Search visible user and assistant messages within this workspace, including configured JSONL imports. Never returns thoughts or tool internals.', capability: 'recall', inputSchema: { type: 'object', additionalProperties: false, properties: queryProperties }, maxCalls: 6, maxResults: 20, maxCharacters: 14_000 },
+      { access: {"kinds":["read"],"result":"events"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'conversation', description: 'Read visible neighboring messages or completed turns in a workspace conversation.', capability: 'recall', inputSchema: { type: 'object', additionalProperties: false, required: ['sessionId'], properties: { sessionId: { type: 'string' }, seq: { type: 'integer', minimum: 0 }, radius: { type: 'integer', minimum: 0, maximum: 10 }, turns: { type: 'boolean' }, requestId: { type: 'string' } } }, maxCalls: 6, maxResults: 21, maxCharacters: 16_000 },
+      { access: {"kinds":["browse"],"result":"records"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'list-sessions', description: 'List sessions in the current workspace and their live status.', capability: 'status', inputSchema: { type: 'object', additionalProperties: false, properties: { active: { type: 'boolean' }, requestId: { type: 'string' } } }, maxCalls: 3, maxResults: 30, maxCharacters: 6000 },
     ],
     async namespace(scope) { return { workspaceId: scope.workspaceId ?? null, historyRoots: await allowedDirectories(config.historyRoots ?? []) } },
     async run(operation, input, namespace, scope, signal): Promise<LookupResult> {

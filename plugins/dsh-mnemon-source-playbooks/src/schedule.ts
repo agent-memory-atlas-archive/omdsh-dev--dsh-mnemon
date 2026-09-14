@@ -1,5 +1,5 @@
 import type { MemoryJsonValue, MemoryOperationScope } from 'dsh-mnemon/contracts'
-import { newRecord, RecordStore, reviseRecord, visibleRecord, type RecordValue } from 'dsh-mnemon-workspace-kit'
+import { newRecord, RecordStore, reviseRecord, visibleRecord, type RecordValue } from 'dsh-mnemon/source-sdk'
 export function renderPrompt(content: string, variables: Record<string, MemoryJsonValue>, scope: MemoryOperationScope): string {
   const timestamp = new Date().toISOString()
   const values = { ...variables, date: timestamp.slice(0, 10), time: timestamp.slice(11, 19) + 'Z', workspace: scope.workspaceId ?? '', session: scope.sessionId ?? '' }

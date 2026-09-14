@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type PointerEvent } from 'react'
 import { installMemorySourceUI, MemoryMarkdown, MemoryMarkdownEditor, type MemorySourcePageProps, type MemorySourceUIContext } from 'dsh-mnemon/client'
 import type { MemoryJsonValue } from 'dsh-mnemon/contracts'
-import type { RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { RecordValue } from 'dsh-mnemon/source-sdk'
 import type { Geometry, MaterialContent } from './engine.ts'
 import { canvasStyles } from './styles.ts'
 export const inject = ['slots']

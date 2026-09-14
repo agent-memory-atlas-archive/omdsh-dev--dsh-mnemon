@@ -6,6 +6,7 @@ import type { MemoryPluginEntryView, MemoryPluginPreference, MemoryViewConfigura
 import type { MemoryStrategyConfigurationField } from '../sdk/strategy-configuration.ts'
 import { MnemonClient } from './api.ts'
 import css from './MemoryCompositionEditor.module.css'
+import { MemoryAccessSummary, MemoryDecisionList } from './context-access.tsx'
 
 export function MemoryCompositionEditor(props: { connection?: ClientConnectionHandle; sessionId?: string; workspaceId?: string; locale: string; refreshKey?: number; onChange?(): void }) {
   const [open, setOpen] = useState(false), zh = props.locale.startsWith('zh')
@@ -82,6 +83,7 @@ function Editor(props: { connection: ClientConnectionHandle; sessionId?: string;
   useEffect(() => { if (props.refreshKey) void load() }, [props.refreshKey])
   const entries = dashboard?.entries.filter(entry => entry.roles.includes('strategy') || entry.roles.includes('strategy-extension')) ?? []
   const visibleEntries = entries.filter(entry => entry.roles.includes('strategy') ? entry.typeId === strategy : entry.strategyTypeId === strategy)
+  const presentedSources = dashboard?.sources.map(source => ({ ...source, label: dashboard.entries.find(entry => entry.packageName === source.packageName && entry.roles.includes('source'))?.label[zh ? 'zh-CN' : 'en'] ?? source.label })) ?? []
   const editorId = useId()
   const strategies = entries.filter(entry => entry.roles.includes('strategy') && entry.typeId)
   const disabled = busy || !dashboard?.writable
@@ -151,7 +153,7 @@ function Editor(props: { connection: ClientConnectionHandle; sessionId?: string;
             {expanded && <div className={css.componentBody} id={editorId + '-' + entry.entryId}>
               {entry.diagnostic && <p className={css.error}>{entry.diagnostic}</p>}
               {entry.fields.length === 0 && <p className={css.hint}>{t('This strategy has no additional settings.', '此策略没有额外参数。')}</p>}
-              <div className={css.fields}>{entry.fields.map(field => <Field key={entry.entryId + '/' + field.key} field={field} value={state.config[field.key]} sources={dashboard.sources} disabled={disabled || !entry.writable} locale={props.locale} onChange={value => {
+              <div className={css.fields}>{entry.fields.map(field => <Field key={entry.entryId + '/' + field.key} field={field} value={state.config[field.key]} sources={presentedSources} disabled={disabled || !entry.writable} locale={props.locale} onChange={value => {
                 const config = structuredClone(state.config)
                 if (value === undefined) delete config[field.key]; else config[field.key] = value
                 edit(entry, { enabled: state.enabled, config })
@@ -161,6 +163,13 @@ function Editor(props: { connection: ClientConnectionHandle; sessionId?: string;
           </section>
         })}
       </div>
+      {dashboard.current && <details className={css.operations}>
+        <summary>{t('Context used by the current conversation', '当前会话实际使用的上下文')}<IconChevronDownOutline14 className={css.chevron} /></summary>
+        <p className={css.hint}>{t('This is the frozen context of the latest generated turn. Changes to these settings take effect on a new turn.', '这里展示最近一次生成轮次固定使用的上下文。配置变更将在新轮次生效。')}</p>
+        <p>{dashboard.current.routes.length} {t('read entry points', '个读取入口')} · {dashboard.current.actions.length} {t('available actions', '个可用操作')}</p>
+        <MemoryDecisionList decisions={dashboard.current.decisions} sources={presentedSources} locale={props.locale} />
+        {!dashboard.current.decisions?.length && <p className={css.hint}>{t('This turn has no enhancement decisions.', '此轮没有增强策略决策。')}</p>}
+      </details>}
       {preview && <section className={css.preview} aria-label={t('Composition preview', '组合预览')}>
         <h3>{t('Composition preview', '组合预览')}</h3>
         <dl className={css.metrics}>
@@ -171,12 +180,13 @@ function Editor(props: { connection: ClientConnectionHandle; sessionId?: string;
         </dl>
         <p className={css.hint}>{t('Save to apply to new turns. Preview does not change memory or run actions.', '保存后应用于新轮次。预览不会修改记忆或执行操作。')}</p>
         {preview.result.diagnostics.map((diagnostic, index) => <p key={index} className={css.error}>{diagnostic}</p>)}
+        <MemoryDecisionList decisions={preview.result.decisions} sources={presentedSources} locale={props.locale} />
         <details className={css.operations}><summary>{t('Sources and available operations', '参与来源和可用操作')}<IconChevronDownOutline14 className={css.chevron} /></summary>
           {[...new Set([...preview.result.projection, ...preview.result.routes, ...preview.result.actions].map(item => item.sourceInstanceKey))].map(key => {
             const routes = preview.result.routes.filter(route => route.sourceInstanceKey === key), actions = preview.result.actions.filter(action => action.sourceInstanceKey === key)
             return <details className={css.sourcePreview} key={key}>
-              <summary><span>{dashboard.sources.find(source => source.sourceInstanceKey === key)?.label ?? key}</span><small>{routes.length} {t('reads', '读取')} · {actions.length} {t('actions', '操作')}</small><IconChevronDownOutline14 className={css.chevron} /></summary>
-              <div>{routes.length > 0 && <p><span>{t('Read', '读取')}</span><code>{routes.map(route => route.operationId).join(', ')}</code></p>}{actions.length > 0 && <p><span>{t('Action', '操作')}</span><code>{actions.map(action => action.operationId).join(', ')}</code></p>}{routes.length === 0 && actions.length === 0 && <p className={css.hint}>{t('Context only', '仅提供上下文')}</p>}</div>
+              <summary><span>{presentedSources.find(source => source.sourceInstanceKey === key)?.label ?? key}</span><small>{routes.length} {t('reads', '读取')} · {actions.length} {t('actions', '操作')}</small><IconChevronDownOutline14 className={css.chevron} /></summary>
+              <MemoryAccessSummary locale={props.locale} inventory={{ reads: routes.map(route => ({ ...route, id: route.operationId })), actions: actions.map(action => ({ ...action, id: action.operationId, requiresApproval: action.requiresApproval ?? false })) }} />
             </details>
           })}
         </details>

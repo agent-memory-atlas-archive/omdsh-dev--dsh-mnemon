@@ -1,6 +1,6 @@
 import { Proposals } from './proposals.tsx'
 import { installMemorySourceUI, type MemorySourcePageProps, type MemorySourceUIContext } from 'dsh-mnemon/client'
-import { createCollectionPage, RecordActionPanel, type RecordActionPanelOptions } from 'dsh-mnemon-workspace-kit/client'
+import { createCollectionPage, RecordActionPanel, type RecordActionPanelOptions } from 'dsh-mnemon/client'
 export const inject = ['slots']
 const Settings = createCollectionPage({ title: { en: 'Review settings and constraints', 'zh-CN': '审核设置与约束' }, description: { en: 'Only visible conversation is sent to a separate reviewer. Automatic reviews are opt-in.', 'zh-CN': '独立审核仅接收用户可见的对话。自动审核需要显式开启。' }, kinds: [{ value: 'constraint', label: { en: 'Constraint', 'zh-CN': '审核约束' } }, { value: 'cycle', label: { en: 'Session review cycle', 'zh-CN': '会话审核周期' } }], scopes: ['session', 'project', 'global'], defaultScope: 'session', fields: [
   { key: 'enabled', label: { en: 'Enabled', 'zh-CN': '已启用' }, type: 'boolean', defaultValue: true },

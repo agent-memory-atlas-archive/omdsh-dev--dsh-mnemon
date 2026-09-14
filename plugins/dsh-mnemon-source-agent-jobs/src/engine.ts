@@ -1,9 +1,10 @@
+import { assertMemoryOperationPlan, memoryOperationPlanDigest } from 'dsh-mnemon/source-sdk'
 import { randomUUID } from 'node:crypto'
 import { appendFile, mkdir, realpath, rm, stat, writeFile } from 'node:fs/promises'
 import { availableParallelism, freemem, loadavg, totalmem } from 'node:os'
 import { isAbsolute, join, resolve } from 'node:path'
 import type { MemoryJsonValue, MemoryOperationScope } from 'dsh-mnemon/contracts'
-import { allowedDirectories, allowedFile, digest, json, readBoundedFile, RecordStore, reviseRecord, runBoundedProcess, visibleRecord, type RecordValue } from 'dsh-mnemon-workspace-kit'
+import { allowedDirectories, allowedFile, digest, json, readBoundedFile, RecordStore, reviseRecord, runBoundedProcess, visibleRecord, type RecordValue } from 'dsh-mnemon/source-sdk'
 import { capturedContext, JobInputs } from './inputs.ts'
 
 export interface CliAdapter {
@@ -67,7 +68,7 @@ export async function preparePlan(record: RecordValue, scope: MemoryOperationSco
   const args = [...template.map(value => expand(value)), ...attachments.flatMap(attachment => adapter.attachmentArgs!.map(value => expand(value, attachment)))]
   const plan = { jobId: record.id, version: record.version, adapterId: adapter.id, command, args, cwd, prompt, stdin: adapter.input === 'stdin', model, attachments,
     timeoutSeconds: adapter.timeoutSeconds ?? 600, commandSize: metadata.size, commandModified: metadata.mtimeMs }
-  return { ...plan, digest: digest(plan) }
+  return { ...plan, digest: memoryOperationPlanDigest(plan) }
 }
 interface PendingJob { id: string; plan: ExecutionPlan; scope: MemoryOperationScope }
 interface RunningJob { controller: AbortController; output: string }
@@ -103,7 +104,7 @@ export class JobEngine {
       const record = records.find(record => record.id === id && visibleRecord(record, scope))
       if (!record || record.kind !== 'job' || record.state !== 'active' || !['draft', undefined].includes(record.data.status as any)) throw new Error('Only an approved draft job can be started')
       plan = await preparePlan(record, scope, this.config, this.inputs)
-      if (shown.digest !== plan.digest || digest(shown) !== digest(plan)) throw new Error('The execution plan changed; preview and approve the current plan')
+      assertMemoryOperationPlan(shown, plan, 'The execution plan changed; preview and approve the current plan')
       reviseRecord(record, 'queued')
       record.data.status = 'queued'; record.data.plan = json(plan); record.data.ownerPid = process.pid; record.data.runId = randomUUID(); record.data.cancelRequested = false
     }, signal)

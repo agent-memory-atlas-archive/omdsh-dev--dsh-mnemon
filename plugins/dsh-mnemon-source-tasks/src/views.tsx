@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { MemorySourcePageProps } from 'dsh-mnemon/client'
-import type { RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { RecordValue } from 'dsh-mnemon/source-sdk'
 export interface TaskFilters { kind: string; status: string; due: string; date: string; category: string }
 export const taskDay = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}` }
 export const taskQuadrant = (record: RecordValue) => (record.data.important === true ? 0 : 2) + (record.data.urgent === true ? 0 : 1)

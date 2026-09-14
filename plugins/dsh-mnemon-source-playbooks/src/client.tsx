@@ -2,7 +2,7 @@ import { SkillFiles } from './file-client.tsx'
 import { SkillsPage } from './skill-client.tsx'
 import { LibraryViews } from './library-client.tsx'
 import { installMemorySourceUI, type MemorySourcePageProps, type MemorySourceUIContext } from 'dsh-mnemon/client'
-import { createCollectionPage, RecordActionPanel, type RecordActionPanelOptions } from 'dsh-mnemon-workspace-kit/client'
+import { createCollectionPage, RecordActionPanel, type RecordActionPanelOptions } from 'dsh-mnemon/client'
 export const inject = ['slots']
 const LibraryPage = createCollectionPage({
   reviewedRevisions: true,

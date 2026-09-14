@@ -1,5 +1,5 @@
 import { installMemorySourceUI, type MemorySourcePageProps, type MemorySourceUIContext } from 'dsh-mnemon/client'
-import { createCollectionPage, LookupPanel, type LookupPanelOptions } from 'dsh-mnemon-workspace-kit/client'
+import { createCollectionPage, LookupPanel, type LookupPanelOptions } from 'dsh-mnemon/client'
 export const inject = ['slots']
 const options: LookupPanelOptions = {
   title: { en: 'Search workspace files', 'zh-CN': '检索工作区文件' }, operation: 'find', defaults: { query: '', mode: 'content', types: 'documents' },

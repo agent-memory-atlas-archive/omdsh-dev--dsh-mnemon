@@ -18,6 +18,7 @@ export interface MemoryOperationObservation {
   records?: MemoryOperationRecord[]
   revision?: string
   status?: MemoryReceiptStatus
+  execution?: import('./operations.ts').MemoryExecutionResult
   completion?: MemoryMutationCompletion
 }
 

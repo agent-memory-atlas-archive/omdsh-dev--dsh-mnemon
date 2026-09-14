@@ -1,7 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from 'schemastery'
 import { defineMemoryPlugin, installMemory, memoryConfigurationDigest } from 'dsh-mnemon/extension-sdk'
-import { createRecordSource, type RecordSourceConfig } from 'dsh-mnemon-workspace-kit'
+import { createRecordSource, type RecordSourceConfig } from 'dsh-mnemon/source-sdk'
 import { sourceOptions } from './source.ts'
 export const name = 'dsh-mnemon-source-project-context'
 export const inject = ['mnemonMemory']

@@ -1,5 +1,5 @@
 import type { MemoryJsonValue } from 'dsh-mnemon/contracts'
-import type { RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { RecordValue } from 'dsh-mnemon/source-sdk'
 
 export const libraryFields = Object.fromEntries(['name', 'category', 'tag', 'summary'].map(key => [key, { type: 'string', maxLength: 200 }]))
 export function filterLibrary(records: RecordValue[], input: { [key: string]: MemoryJsonValue }): RecordValue[] {

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { MemoryFileEditor, useRequestVersion, type MemorySourcePageProps } from 'dsh-mnemon/client'
-import { managementError } from 'dsh-mnemon-workspace-kit/client'
+import { managementError } from 'dsh-mnemon/client'
 import type { MemoryJsonValue } from 'dsh-mnemon/contracts'
 
 type NativeEntry = { name: string; description: string; provider: string; source: string; enabled: boolean; protected: boolean }

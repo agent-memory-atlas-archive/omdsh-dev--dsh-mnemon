@@ -1,8 +1,10 @@
+import { assertMemoryOperationPlan } from 'dsh-mnemon/source-sdk'
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import type { MemoryJsonValue, MemoryOperationScope } from 'dsh-mnemon/contracts'
 import { memoryInputRecord, memoryInputText } from 'dsh-mnemon/extension-sdk'
-import { AssetStore, RecordStore, digest, json, reviseRecord, type AssetInput, type AssetReference, type RecordValue, type WorkspaceActivity } from 'dsh-mnemon-workspace-kit'
+import { AssetStore, RecordStore, digest, json, reviseRecord, type AssetInput, type AssetReference, type RecordValue } from 'dsh-mnemon/source-sdk'
+import { type WorkspaceActivity } from 'dsh-mnemon-workspace-kit'
 import { configurationStamp, deliverWithin, planFor, sendWebhook, type ChannelPayload, type ChannelSender, type DeliveryPlan, type NotificationConfig } from './delivery.ts'
 
 export interface NotificationPort {
@@ -88,7 +90,8 @@ export class NotificationEngine {
       const record = records.find(record => record.id === id && record.kind === 'delivery' && record.state === 'active' && sameWorkspace(record, scope))
       if (!record || record.data.status !== 'draft') throw new Error('Only an unsent draft in this workspace can be sent')
       plan = record.data.plan as unknown as DeliveryPlan
-      if (digest(expected) !== digest(plan) || plan.configurationStamp !== configurationStamp(this.config)) throw new Error('The delivery plan or channel configuration changed; prepare a new draft')
+      assertMemoryOperationPlan(expected, plan, 'The delivery plan changed; prepare a new draft')
+      if (plan.configurationStamp !== configurationStamp(this.config)) throw new Error('The delivery plan or channel configuration changed; prepare a new draft')
       // Claim durably before any external effect. A crash never causes an automatic resend.
       reviseRecord(record, 'send-requested'); record.data.status = 'sending'
     }, combined)

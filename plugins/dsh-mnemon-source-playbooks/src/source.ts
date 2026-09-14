@@ -1,7 +1,7 @@
-import { reviseRecord, visibleRecord, type RecordSourceOptions } from 'dsh-mnemon-workspace-kit'
+import { reviseRecord, visibleRecord, type RecordSourceOptions } from 'dsh-mnemon/source-sdk'
 import { memoryInputText } from 'dsh-mnemon/extension-sdk'
 import { filterLibrary } from './library.ts'
-export const sourceOptions: RecordSourceOptions = {
+export const sourceOptions: RecordSourceOptions = { context: {"mode":"eager","weight":4} satisfies import('dsh-mnemon/contracts').MemoryContextProfile,
   transfer: true, reviewedRevisions: true,
   typeId: 'playbooks', role: 'instruction-library', label: 'Playbooks', description: 'Approved reusable skills and prompts with progressive disclosure.',
   kinds: ['skill', 'prompt', 'schedule'], scopes: ['global', 'project', 'session'], defaultScope: 'project',

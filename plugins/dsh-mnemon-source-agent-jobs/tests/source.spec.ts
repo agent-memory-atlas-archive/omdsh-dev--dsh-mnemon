@@ -6,7 +6,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { COMPOSABLE_MEMORY_API_VERSION } from 'dsh-mnemon/contracts'
 import { defineMemoryStrategy, installMemory } from 'dsh-mnemon/extension-sdk'
 import { MemoryCompositionRunner } from 'dsh-mnemon/testing'
-import type { RecordSnapshot } from 'dsh-mnemon-workspace-kit'
+import type { RecordSnapshot } from 'dsh-mnemon/source-sdk'
 import { createAgentJobsSource } from '../src/index.ts'
 
 it('composes through Core, fences copied inputs, and requires exact-plan external approval', async () => {

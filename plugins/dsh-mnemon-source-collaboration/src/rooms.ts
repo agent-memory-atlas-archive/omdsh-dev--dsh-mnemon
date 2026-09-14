@@ -1,5 +1,5 @@
 import type { MemoryJsonValue, MemoryOperationScope } from 'dsh-mnemon/contracts'
-import { newRecord, reviseRecord, visibleRecord, type RecordValue } from 'dsh-mnemon-workspace-kit'
+import { newRecord, reviseRecord, visibleRecord, type RecordValue } from 'dsh-mnemon/source-sdk'
 export function actor(scope: MemoryOperationScope): string {
   if (!scope.sessionId || !scope.workspaceId) throw new Error('Select a project session')
   return scope.sessionId

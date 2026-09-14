@@ -1,5 +1,5 @@
 import { installMemorySourceUI, type MemorySourceUIContext } from 'dsh-mnemon/client'
-import { createCollectionPage } from 'dsh-mnemon-workspace-kit/client'
+import { createCollectionPage } from 'dsh-mnemon/client'
 export const inject = ['slots']
 export const Page = createCollectionPage({
   reviewedRevisions: true,

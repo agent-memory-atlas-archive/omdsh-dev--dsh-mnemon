@@ -1,6 +1,6 @@
 import type { MemoryJsonValue, MemoryOperationObservation, MemoryOperationScope } from 'dsh-mnemon/contracts'
 import { memoryInputRecord, memoryInputText } from 'dsh-mnemon/extension-sdk'
-import { digest, json, newRecord, RecordStore, reviseRecord, visibleRecord, type RecordSnapshot, type RecordValue } from 'dsh-mnemon-workspace-kit'
+import { digest, json, newRecord, RecordStore, reviseRecord, visibleRecord, type RecordSnapshot, type RecordValue } from 'dsh-mnemon/source-sdk'
 
 export interface LearningConfig { dataDir?: string; captureFeedback?: boolean; captureOutcomes?: boolean; autoAcceptFacts?: boolean; autoAcceptPreferences?: boolean; evidenceLimit?: number; provider?: string; model?: string }
 export function learningPolicy(snapshot: Pick<RecordSnapshot, 'records'>, config: LearningConfig = {}): LearningConfig { return { captureFeedback: true, captureOutcomes: true, autoAcceptFacts: false, autoAcceptPreferences: false, evidenceLimit: 1000, ...config, ...snapshot.records.find(record => record.kind === 'policy')?.data } }

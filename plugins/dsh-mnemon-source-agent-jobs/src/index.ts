@@ -1,9 +1,12 @@
+// Import the optional DSH activity-bus declaration independently of storage helpers.
+import type {} from 'dsh-mnemon-workspace-kit'
+import { createMemoryExecutionResult } from 'dsh-mnemon/source-sdk'
 import { randomUUID } from 'node:crypto'
 import type { Context } from '@deepseek-ai/cordis'
 import z from 'schemastery'
 import type { MemoryJsonValue, MemoryOperationScope, MemorySourceDefinition, MemorySourceManagementRequest } from 'dsh-mnemon/contracts'
 import { createMemoryMutationReceipt, defineMemoryPlugin, installMemory, memoryConfigurationDigest, memoryInputRecord, memoryInputText } from 'dsh-mnemon/extension-sdk'
-import { createRecordSource, digest, json, reviseRecord, sourceRecordDirectory, visibleRecord, withLookupRoutes, type LookupResult, type RecordValue } from 'dsh-mnemon-workspace-kit'
+import { createRecordSource, digest, json, reviseRecord, sourceRecordDirectory, visibleRecord, withLookupRoutes, type LookupResult, type RecordValue } from 'dsh-mnemon/source-sdk'
 import { DshWorkspaceAdapter } from 'dsh-mnemon-workspace-kit/dsh'
 import { JobEngine, preparePlan, terminalStates, validateJobConfig, type ExecutionPlan, type JobConfig } from './engine.ts'
 import { contextCaptures, type JobInputs } from './inputs.ts'
@@ -24,7 +27,7 @@ const planSchema: MemoryJsonValue = { type: 'object', additionalProperties: fals
 
 export function createAgentJobsSource(config: Config = {}, integration: Integration = {}): MemorySourceDefinition {
   validateJobConfig(config)
-  const base = createRecordSource({ typeId: 'agent-jobs', role: 'agent-jobs', label: 'Background jobs', description: 'Approved project jobs and their execution history.', kinds: ['job'], scopes: ['project'], defaultScope: 'project',
+  const base = createRecordSource({ context: {"mode":"routed","weight":1} satisfies import('dsh-mnemon/contracts').MemoryContextProfile, typeId: 'agent-jobs', role: 'agent-jobs', label: 'Background jobs', description: 'Approved project jobs and their execution history.', kinds: ['job'], scopes: ['project'], defaultScope: 'project',
     prepare(record, scope) {
       const data = record.data
       record.data = { adapter: String(data.adapter ?? ''), model: String(data.model ?? ''), attachments: data.attachments ?? [], assets: [], contextSnapshots: [], context: data.context ?? '', status: 'draft', ownerSessionId: scope.sessionId ?? '', notify: data.notify ?? true }
@@ -35,7 +38,7 @@ export function createAgentJobsSource(config: Config = {}, integration: Integrat
       contextCaptures(record.data.contextSnapshots)
     },
     project(records) { return `Background jobs: ${records.filter(record => ['running', 'queued'].includes(String(record.data.status))).length} active, ${records.filter(record => terminalStates.includes(String(record.data.status))).length} finished. Read status and logs on demand. Preview a concrete execution plan before requesting external execution.` },
-    modelActions: [{ id: 'cancel-job', description: 'Request cancellation of an owned queued/running job from this View.', capability: 'write', inputSchema: idSchema }],
+    modelActions: [{ operation: {"effects":["coordinate"],"execution":"immediate","requiresReadGrant":true} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics, id: 'cancel-job', description: 'Request cancellation of an owned queued/running job from this View.', capability: 'write', inputSchema: idSchema }],
     mutate(operation, input, { records, scope }) {
       const record = records.find(record => record.id === input.id && visibleRecord(record, scope))
       if (!record) throw new Error('Job is outside this project')
@@ -50,10 +53,10 @@ export function createAgentJobsSource(config: Config = {}, integration: Integrat
       records.push({ ...structuredClone(record), id: randomUUID(), title: record.title.slice(0, 280) + ' · retry', data, state: 'active', version: 1, signals: 1, createdAt: now, updatedAt: now, history: [] })
     },
   }, config)
-  const manifest = { ...base.manifest, capabilities: base.manifest.capabilities.filter(capability => capability !== 'import'), actions: [...base.manifest.actions ?? [], { id: 'run-job', description: 'Start an approved draft using the exact displayed execution plan. The plan includes command, argv, workspace, prompt and attachments.', capability: 'write' as const, authority: 'process-execution', inputSchema: planSchema }] }
+  const manifest = { ...base.manifest, capabilities: base.manifest.capabilities.filter(capability => capability !== 'import'), actions: [...base.manifest.actions ?? [], { operation: {"effects":["execute"],"execution":"deferred","requiresReadGrant":true} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics, id: 'run-job', description: 'Start an approved draft using the exact displayed execution plan. The plan includes command, argv, workspace, prompt and attachments.', capability: 'write' as const, authority: 'process-execution', inputSchema: planSchema }] }
   return { manifest: { ...manifest, consistency: 'namespace-pinned-live-read', routes: [
-    { id: 'job-plan', description: 'Preview an approved job as a concrete JSON execution plan; oversized plans require the management page.', capability: 'recall', inputSchema: idSchema, maxCalls: 4, maxResults: 1, maxCharacters: 12_000 },
-    { id: 'job-log', description: 'Read the recent log output for one project job.', capability: 'recall', inputSchema: idSchema, maxCalls: 8, maxResults: 1, maxCharacters: 12_000 }, ...base.manifest.routes ?? [],
+    { access: {"kinds":["read"],"result":"records"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'job-plan', description: 'Preview an approved job as a concrete JSON execution plan; oversized plans require the management page.', capability: 'recall', inputSchema: idSchema, maxCalls: 4, maxResults: 1, maxCharacters: 12_000 },
+    { access: {"kinds":["observe"],"result":"text"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'job-log', description: 'Read the recent log output for one project job.', capability: 'recall', inputSchema: idSchema, maxCalls: 8, maxResults: 1, maxCharacters: 12_000 }, ...base.manifest.routes ?? [],
   ] }, create(context) {
     const directory = sourceRecordDirectory('agent-jobs', context, config), key = digest([directory, config])
     let entry = engines.get(key)
@@ -62,15 +65,20 @@ export function createAgentJobsSource(config: Config = {}, integration: Integrat
     const engine = entry.engine
     const wrapped = withLookupRoutes({ ...base, manifest }, {
       routes: [
-        { id: 'job-plan', description: 'Preview a concrete execution plan.', capability: 'recall', inputSchema: idSchema, maxCalls: 4, maxResults: 1, maxCharacters: 12_000 },
-        { id: 'job-log', description: 'Read a job log.', capability: 'recall', inputSchema: idSchema, maxCalls: 8, maxResults: 1, maxCharacters: 12_000 },
+        { access: {"kinds":["read"],"result":"records"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'job-plan', description: 'Preview a concrete execution plan.', capability: 'recall', inputSchema: idSchema, maxCalls: 4, maxResults: 1, maxCharacters: 12_000 },
+        { access: {"kinds":["observe"],"result":"text"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'job-log', description: 'Read a job log.', capability: 'recall', inputSchema: idSchema, maxCalls: 8, maxResults: 1, maxCharacters: 12_000 },
       ],
       async namespace(scope) { return { workspaceId: scope.workspaceId ?? null, adapterDigest: digest(config.adapters ?? []) } },
       async run(operation, input, namespace, scope): Promise<LookupResult> {
         const grant = memoryInputRecord(namespace, 'job namespace')
         if (grant.workspaceId !== (scope.workspaceId ?? null) || grant.adapterDigest !== digest(config.adapters ?? [])) throw new Error('The job namespace changed')
         const id = memoryInputText(input.id, 'id', 100)!
-        if (operation === 'job-log') return { items: [{ id, text: await engine.log(id, scope), provenance: { kind: 'process-log', jobId: id } }] }
+        if (operation === 'job-log') {
+          const text = await engine.log(id, scope), record = (await engine.store.read()).records.find(record => record.id === id && visibleRecord(record, scope))
+          if (!record) throw new Error('Job is unavailable in this scope')
+          const execution = record.data.status === 'draft' ? undefined : createMemoryExecutionResult(id, String(record.data.status), typeof record.data.exitCode === 'number' ? record.data.exitCode : undefined)
+          return { items: [{ id, text, reference: { id, revision: String(record.version) }, ...(execution ? { execution } : {}), provenance: { kind: 'process-log', jobId: id } }] }
+        }
         const record = (await engine.store.read()).records.find(record => record.id === id && visibleRecord(record, scope) && record.state === 'active')
         if (!record) throw new Error('An approved project job is required')
         const plan = await preparePlan(record, scope, config, engine.inputs), text = JSON.stringify(plan, null, 2)
@@ -134,7 +142,9 @@ export function createAgentJobsSource(config: Config = {}, integration: Integrat
         if (request.offer.authority !== 'process-execution') throw new Error('External execution authority is required')
         const input = memoryInputRecord(request.input, 'job execution'), id = memoryInputText(input.id, 'id', 100)!
         await engine.enqueue(id, input.plan as unknown as ExecutionPlan, request.view.scope, undefined, request.signal)
-        return createMemoryMutationReceipt(request.view.id, request.offer.id, context.sourceInstanceKey, (await engine.store.read()).revision, { jobId: id, state: 'queued', message: 'Accepted by the background runner. Read its status and logs for the final outcome.' }, 'accepted')
+        const current = await engine.store.read(), record = current.records.find(record => record.id === id)!
+        const execution = createMemoryExecutionResult(id, String(record.data.status), typeof record.data.exitCode === 'number' ? record.data.exitCode : undefined)
+        return { ...createMemoryMutationReceipt(request.view.id, request.offer.id, context.sourceInstanceKey, current.revision, { jobId: id, state: execution.state, message: 'Accepted by the background runner. Read its status and logs for the final outcome.' }, 'accepted'), execution }
       },
       async dispose() { await wrapped.dispose?.(); entry!.refs--; if (entry!.refs === 0) { engines.delete(key); await engine.dispose() } },
     }

@@ -6,7 +6,8 @@ import { join } from 'node:path'
 import { afterEach, expect, it } from 'vitest'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { SessionSeq, type SessionEvent } from '@deepseek-ai/dsh-session'
-import { RecordStore, type WorkspaceActivity } from 'dsh-mnemon-workspace-kit'
+import { RecordStore } from 'dsh-mnemon/source-sdk'
+import { type WorkspaceActivity } from 'dsh-mnemon-workspace-kit'
 import { captureJournalEvent, captureWorkspaceActivity } from '../src/lifecycle.ts'
 const dirs: string[] = []
 afterEach(async () => { for (const dir of dirs.splice(0)) await rm(dir,{recursive:true,force:true}) })

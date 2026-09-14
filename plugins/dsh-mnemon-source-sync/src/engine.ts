@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import type { MemoryJsonValue, MemoryOperationScope, MemoryTransferEntry, MemoryTransferSnapshot } from 'dsh-mnemon/contracts'
 import { memoryInputText } from 'dsh-mnemon/extension-sdk'
-import { json, newRecord, RecordStore, reviseRecord, visibleRecord, type RecordValue } from 'dsh-mnemon-workspace-kit'
+import { json, newRecord, RecordStore, reviseRecord, visibleRecord, type RecordValue } from 'dsh-mnemon/source-sdk'
 import { hash, remoteAddress, repositoryIdentity, SnapshotGit, suggestedIdentity } from './git.ts'
 import { canonical, type Binding, type Bundle, type CapturedTrack, type Conflict, type SyncPlan } from './protocol.ts'
 

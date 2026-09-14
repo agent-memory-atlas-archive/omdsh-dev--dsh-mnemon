@@ -6,7 +6,7 @@ import { afterEach, expect, it } from 'vitest'
 import { COMPOSABLE_MEMORY_API_VERSION, DEFAULT_MEMORY_VIEW_BUDGET } from 'dsh-mnemon/contracts'
 import { defineMemoryStrategy, installMemory } from 'dsh-mnemon/extension-sdk'
 import { MemoryCompositionRunner } from 'dsh-mnemon/testing'
-import { digest, type RecordSnapshot } from 'dsh-mnemon-workspace-kit'
+import { digest, type RecordSnapshot } from 'dsh-mnemon/source-sdk'
 import { createLearningSource } from '../src/source.ts'
 import { LearningStore, learningWindow } from '../src/learning.ts'
 const dirs: string[] = []

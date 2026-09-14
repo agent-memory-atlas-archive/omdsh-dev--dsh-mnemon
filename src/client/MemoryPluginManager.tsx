@@ -5,6 +5,7 @@ import type { MemoryPluginChangePlan, MemoryPluginEntryView, MemoryPluginInspect
 import { MnemonClient } from './api.ts'
 import { MemoryPluginMetrics, MemoryPluginNotice, MemoryPluginSurface } from './plugin-ui.tsx'
 import css from './MemoryCompositionEditor.module.css'
+import { MemoryAccessSummary, memoryAccessLabels } from './context-access.tsx'
 
 interface Props { connection?: ClientConnectionHandle; sessionId?: string; workspaceId?: string; locale: string; refreshKey?: number; onChange?(): void }
 export function MemoryPluginManager(props: Props) {
@@ -42,7 +43,7 @@ function Manager(props: Props & { connection: ClientConnectionHandle }) {
     finally { if (generation === epoch.current) { pending.current = false; setBusy(false) } }
   }
   const entries = dashboard?.entries ?? []
-  const filtered = entries.filter(entry => (filter === 'all' || filter === 'enabled' && entry.enabled || filter === 'available' && !entry.enabled || entry.roles.includes(filter as never)) && `${label(entry)} ${entry.description[zh ? 'zh-CN' : 'en']} ${entry.packageName}`.toLowerCase().includes(query.toLowerCase()))
+  const filtered = entries.filter(entry => (filter === 'all' || filter === 'enabled' && entry.enabled || filter === 'available' && !entry.enabled || entry.roles.includes(filter as never)) && `${label(entry)} ${entry.description[zh ? 'zh-CN' : 'en']} ${entry.packageName} ${dashboard?.sources.filter(source => source.packageName === entry.packageName).flatMap(source => [...memoryAccessLabels(source.operations, props.locale), ...memoryAccessLabels(source.managementOperations, props.locale)]).join(' ') ?? ''}`.toLowerCase().includes(query.toLowerCase()))
   const pages = Math.max(1, Math.ceil(filtered.length / 8)), currentPage = Math.min(page, pages - 1)
   const disabled = busy || !dashboard?.writable
   const reason = (value: MemoryPluginChangePlan['changes'][number]['reason']) => ({ requested: t('Your selection', '本次选择'), requirement: t('Required capability', '配套能力'), 'strategy-change': t('Composition change', '策略切换'), dependent: t('Depends on a disabled capability', '依赖的能力将停用') })[value]
@@ -71,6 +72,7 @@ function Manager(props: Props & { connection: ClientConnectionHandle }) {
         const dependents = entries.filter(value => entry.requiredBy.includes(value.entryId) && value.enabled).map(label)
         return <article key={entry.entryId} aria-label={label(entry)}><header><div><h3>{label(entry)}</h3><div className="mc-meta"><span className="mc-badge">{selected ? t('Current Strategy', '当前策略') : entry.enabled ? entry.active ? t('Enabled', '已启用') : t('Waiting to run', '等待运行') : t('Installed · inactive', '已安装 · 未启用')}</span><span>{main ? t('Strategy', '主策略') : entry.roles.includes('source') ? t('Source', '数据来源') : t('Enhancement', '策略增强')}</span></div></div><button disabled={disabled || !entry.writable || selected} aria-label={`${main ? t('Use ', '使用 ') : entry.enabled ? t('Disable ', '停用 ') : t('Enable ', '启用 ')}${label(entry)}`} onClick={() => void run(async current => { const value = await client.planPlugin(entry.entryId, main || !entry.enabled, dashboard.revision); if (current()) { setPlan(value); setInspection(undefined) } })}>{selected ? t('In use', '使用中') : main ? t('Use Strategy', '使用此策略') : entry.enabled ? t('Disable', '停用') : t('Enable', '启用')}</button></header>
           <p>{entry.description[zh ? 'zh-CN' : 'en']}</p>
+          {dashboard.sources.filter(source => source.packageName === entry.packageName).slice(0, 1).map(source => <MemoryAccessSummary key={source.sourceInstanceKey} inventory={source.operations} management={source.managementOperations} context={source.context} locale={props.locale} compact />)}
           <details><summary>{t('Dependencies and package details', '依赖与软件包详情')}</summary><div><small>{entry.packageName}</small>{requires.length > 0 && <p>{t('Requires', '配套能力')} · {[...new Set(requires)].join('、')}</p>}{dependents.length > 0 && <p>{t('Used by', '已被以下能力使用')} · {dependents.join('、')}</p>}{entry.fields.length > 0 && <p>{t('Tune its fields in Composition settings below.', '可在下方“组合策略配置”中调整参数。')}</p>}{entry.diagnostic && <p>{entry.diagnostic}</p>}</div></details>
         </article>
       })}{!filtered.length && <p className="mc-empty">{t('No matching capabilities. You can inspect an external package below.', '没有匹配的能力，可在下方检查外部软件包。')}</p>}</div>

@@ -1,7 +1,7 @@
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import type { MemoryOperationScope } from 'dsh-mnemon/contracts'
-import { digest, newRecord, RecordStore } from 'dsh-mnemon-workspace-kit'
+import { digest, newRecord, RecordStore } from 'dsh-mnemon/source-sdk'
 import { agentMemoryScope, visibleMessages } from 'dsh-mnemon-workspace-kit/dsh'
 
 /** Source-owned durable accounting. The Strategy receives a due hint, never write authority. */

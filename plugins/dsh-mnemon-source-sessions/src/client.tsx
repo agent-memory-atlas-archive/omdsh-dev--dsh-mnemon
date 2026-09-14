@@ -1,7 +1,7 @@
 import { installCapacityBadge, type CapacityContext } from './capacity.tsx'
 import { useEffect, useRef, useState } from 'react'
 import { installMemorySourceUI, type MemorySourcePageProps, type MemorySourceUIContext } from 'dsh-mnemon/client'
-import { collectionStyles, createCollectionPage, LookupPanel, RecordActionPanel, type LookupPanelOptions, type RecordActionPanelOptions } from 'dsh-mnemon-workspace-kit/client'
+import { collectionStyles, createCollectionPage, LookupPanel, RecordActionPanel, type LookupPanelOptions, type RecordActionPanelOptions } from 'dsh-mnemon/client'
 import type { MemoryJsonValue } from 'dsh-mnemon/contracts'
 export const inject = ['slots']
 const options: LookupPanelOptions = {

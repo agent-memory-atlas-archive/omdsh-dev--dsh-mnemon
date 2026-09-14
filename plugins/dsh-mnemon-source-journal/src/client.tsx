@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { installMemorySourceUI, type MemorySourcePageProps, type MemorySourceUIContext } from 'dsh-mnemon/client'
-import { createCollectionPage } from 'dsh-mnemon-workspace-kit/client'
+import { createCollectionPage } from 'dsh-mnemon/client'
 import { JournalViews } from './views.tsx'
 export const inject = ['slots']
 const Records = createCollectionPage({

@@ -8,6 +8,7 @@ export { memoryConfigurationDigest } from './input.ts'
 export { defineMemoryStrategyConfiguration } from './strategy-configuration.ts'
 export type { MemoryStrategyConfiguration, MemoryStrategyConfigurationField, MemoryLocalizedText } from './strategy-configuration.ts'
 export { withMemoryStorageLock } from './storage-lock.ts'
+export { defineMemoryContextPolicy, composeMemoryContext, validateMemoryContextPolicy, validateMemoryContextSelection, memoryContextHints, type MemoryContextCompositionOptions } from './context-policy.ts'
 export type {
   ComposableMemoryView,
   MemoryActionOffer,

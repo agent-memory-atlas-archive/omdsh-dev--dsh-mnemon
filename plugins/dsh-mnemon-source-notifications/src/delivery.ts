@@ -1,5 +1,5 @@
 import type { MemoryOperationScope } from 'dsh-mnemon/contracts'
-import { digest, type AssetReference } from 'dsh-mnemon-workspace-kit'
+import { digest, type AssetReference } from 'dsh-mnemon/source-sdk'
 
 export interface NotificationChannel {
   id: string

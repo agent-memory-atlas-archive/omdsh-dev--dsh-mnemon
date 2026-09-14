@@ -1,7 +1,9 @@
+// Import the optional DSH activity-bus declaration independently of storage helpers.
+import type {} from 'dsh-mnemon-workspace-kit'
 import type { Context } from '@deepseek-ai/cordis'
 import z from 'schemastery'
 import { defineMemoryPlugin, installMemory, memoryConfigurationDigest } from 'dsh-mnemon/extension-sdk'
-import { createRecordSource, RecordStore, sourceRecordDirectory, visibleRecord, type RecordSnapshot, type RecordSourceConfig } from 'dsh-mnemon-workspace-kit'
+import { createRecordSource, RecordStore, sourceRecordDirectory, visibleRecord, type RecordSnapshot, type RecordSourceConfig } from 'dsh-mnemon/source-sdk'
 import { sourceOptions } from './source.ts'
 import type { MemoryOperationScope, MemorySourceDefinition } from 'dsh-mnemon/contracts'
 export const name = 'dsh-mnemon-source-tasks'

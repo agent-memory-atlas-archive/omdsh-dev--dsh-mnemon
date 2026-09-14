@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import type { MemoryOperationScope } from 'dsh-mnemon/contracts'
-import { AssetStore, json, type AssetInput, type AssetReference, type RecordValue } from 'dsh-mnemon-workspace-kit'
+import { AssetStore, json, type AssetInput, type AssetReference, type RecordValue } from 'dsh-mnemon/source-sdk'
 import type { JobConfig } from './engine.ts'
 
 export interface ContextCapture { sourceKey: string; label: string; track: string; revision: string; capturedAt: string; text: string }

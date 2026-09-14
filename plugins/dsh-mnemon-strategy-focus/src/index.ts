@@ -1,6 +1,6 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { defineMemoryPlugin, defineMemoryStrategyConfiguration, installMemory } from 'dsh-mnemon/extension-sdk'
-import { defineWorkspacePolicy, validateWorkspacePolicy } from 'dsh-mnemon-strategy-workspace/extension-sdk'
+import { defineWorkspacePolicy, validateMemoryContextSelection } from 'dsh-mnemon-strategy-workspace/extension-sdk'
 
 export const name = 'dsh-mnemon-strategy-focus'
 export const inject = ['mnemonMemory']
@@ -11,17 +11,18 @@ export const memoryPlugin = defineMemoryPlugin({
   roles: ['strategy-extension'], provides: [{ id: 'strategy.workspace.focus', exclusive: true }], requires: ['strategy.workspace'],
 })
 export function createFocusExtension(config: Config = {}) {
+  if (config.maxProjectionCharacters !== undefined && config.maxProjectionCharacters > 65536) throw new Error('Focus context character budget must not exceed 65536')
   const captured = structuredClone(config)
-  const selection = captured.sourceKeys === undefined ? undefined : validateWorkspacePolicy('focus', {
+  const selection = captured.sourceKeys === undefined ? undefined : validateMemoryContextSelection( {
     sourceKeys: captured.sourceKeys, ...(captured.writableSourceKeys === undefined ? {} : { writableSourceKeys: captured.writableSourceKeys }), maxProjectionCharacters: captured.maxProjectionCharacters ?? 8192,
   })
   // Validate both the budget and an independent writable selection at installation.
-  validateWorkspacePolicy('focus', { sourceKeys: captured.writableSourceKeys ?? [], maxProjectionCharacters: captured.maxProjectionCharacters ?? 8192 })
-  return defineWorkspacePolicy({ typeId: 'focus', packageName: name, slot: 'focus', contribute: (_request, sources) => selection ?? {
+  validateMemoryContextSelection( { sourceKeys: captured.writableSourceKeys ?? [], maxProjectionCharacters: captured.maxProjectionCharacters ?? 8192 })
+  return defineWorkspacePolicy({ typeId: 'focus', packageName: name, slot: 'focus', contribute: (_request, sources) => ({ decisions: [], selection: selection ?? {
     sourceKeys: sources.map(source => source.sourceInstanceKey).sort(),
     ...(captured.writableSourceKeys === undefined ? {} : { writableSourceKeys: captured.writableSourceKeys }),
     maxProjectionCharacters: captured.maxProjectionCharacters ?? 8192,
-  } })
+  } }) })
 }
 export const memoryStrategyConfiguration = defineMemoryStrategyConfiguration({
   kind: 'strategy-extension', typeId: 'focus', label: memoryPlugin.label, description: memoryPlugin.description,

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { bundleDigest, inspectSkillBundle, materializeSkillBundle, parseSkillBundle, verifySkillFiles, type SkillBundle } from '../src/skill-bundle.ts'
 import { SkillStore, type SkillBasis } from '../src/skill-store.ts'
 import { SkillEngine } from '../src/skill-engine.ts'
-import { runBoundedProcess } from 'dsh-mnemon-workspace-kit'
+import { runBoundedProcess } from 'dsh-mnemon/source-sdk'
 
 const directories: string[] = []
 const scope = { storage: 'custom' as const, workspaceId: '/project-a', sessionId: 'session-a' }

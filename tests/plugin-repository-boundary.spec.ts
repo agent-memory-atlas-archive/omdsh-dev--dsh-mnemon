@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const pluginNames = readdirSync(join(root, 'plugins')).filter(name => name.startsWith('dsh-mnemon-')).sort()
-const coreImports = new Set(['dsh-mnemon/contracts', 'dsh-mnemon/extension-sdk', 'dsh-mnemon/testing', 'dsh-mnemon/client'])
+const coreImports = new Set(['dsh-mnemon/contracts', 'dsh-mnemon/extension-sdk', 'dsh-mnemon/source-sdk', 'dsh-mnemon/testing', 'dsh-mnemon/client'])
 const providerImports = new Set(['dsh-mnemon-source-memory-spaces/provider-sdk', 'dsh-mnemon-source-memory-spaces/testing'])
 const threeTierExtensions = new Set(['dsh-mnemon-strategy-auto-capture', 'dsh-mnemon-strategy-light-context', 'dsh-mnemon-strategy-scoped'])
 const threeTierOwner = 'dsh-mnemon-strategy-default-three-tier'
@@ -145,7 +145,8 @@ describe('standalone plugin repository boundary', () => {
   })
 
   for (const [entry, allowed] of [
-    ['src/sdk/index.ts', ['src/sdk', 'src/core/contracts', 'src/core/definitions.ts']],
+    ['src/sdk/index.ts', ['src/sdk', 'src/core/contracts', 'src/core/definitions.ts', 'src/core/decision-contracts.ts', 'src/core/operation-contracts.ts']],
+    ['src/sdk/source/index.ts', ['src/sdk', 'src/core/contracts', 'src/core/definitions.ts', 'src/core/decision-contracts.ts', 'src/core/operation-contracts.ts']],
     ['plugins/dsh-mnemon-source-memory-spaces/src/provider-sdk.ts', [
       'plugins/dsh-mnemon-source-memory-spaces/src/provider-sdk.ts',
       'plugins/dsh-mnemon-source-memory-spaces/src/contracts.ts',
@@ -163,7 +164,7 @@ describe('standalone plugin repository boundary', () => {
       for (const { specifier, typeOnly } of imports(file)) {
         if (typeOnly) continue
         if (specifier.startsWith('.')) pending.push(resolve(dirname(file), specifier))
-        else if (!isBuiltin(specifier)) violations.push(`${relative(root, file)}: ${specifier}`)
+        else if (!isBuiltin(specifier) && !(entry === 'src/sdk/source/index.ts' && ['proper-lockfile', '@vscode/ripgrep'].includes(specifier))) violations.push(`${relative(root, file)}: ${specifier}`)
       }
     }
     expect(visited.size).toBeGreaterThan(1)

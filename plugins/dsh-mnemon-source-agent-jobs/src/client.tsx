@@ -1,7 +1,9 @@
+import { MemoryExecutionStatus } from 'dsh-mnemon/client'
+import type { MemoryExecutionState } from 'dsh-mnemon/contracts'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { installMemorySourceUI, type MemorySourcePageProps, type MemorySourceUIContext } from 'dsh-mnemon/client'
-import { collectionStyles, createCollectionPage } from 'dsh-mnemon-workspace-kit/client'
-import type { RecordSnapshot } from 'dsh-mnemon-workspace-kit'
+import { collectionStyles, createCollectionPage } from 'dsh-mnemon/client'
+import type { RecordSnapshot } from 'dsh-mnemon/source-sdk'
 import type { MemoryJsonValue } from 'dsh-mnemon/contracts'
 import type { ExecutionPlan } from './engine.ts'
 import { JobInputPanel } from './inputs-client.tsx'
@@ -54,7 +56,7 @@ function JobControls(props: MemorySourcePageProps) {
   const status: Record<string, string> = zh ? { draft: '待执行', queued: '排队中', running: '执行中', succeeded: '已完成', failed: '失败', cancelled: '已取消', interrupted: '已中断', 'timed-out': '超时' } : { draft: 'Draft', queued: 'Queued', running: 'Running', succeeded: 'Succeeded', failed: 'Failed', cancelled: 'Cancelled', interrupted: 'Interrupted', 'timed-out': 'Timed out' }
   return <section data-mnemon-collection aria-label={zh ? '执行控制' : 'Execution controls'}><style>{collectionStyles}</style><h2>{zh ? '执行控制' : 'Execution controls'}</h2>
     <label>{zh ? '选择任务' : 'Select job'} <select value={selected} onChange={event => setSelected(event.target.value)}><option value="">{zh ? '请选择' : 'Choose a job'}</option>{snapshot.records.filter(record => record.state === 'active').map(record => <option key={record.id} value={record.id}>{record.title} · {status[String(record.data.status)] ?? String(record.data.status)}</option>)}</select></label>
-    {record && <article style={{ marginTop: 16 }}><h3>{record.title}</h3><p role="status">{status[String(record.data.status)] ?? String(record.data.status)}{record.data.exitCode !== null && record.data.exitCode !== undefined && ` · exit ${String(record.data.exitCode)}`}</p><small>{record.id}</small>
+    {record && <article style={{ marginTop: 16 }}><h3>{record.title}</h3>{record.data.status === 'draft' ? <p>{status.draft}</p> : <MemoryExecutionStatus locale={props.locale} execution={{ id: record.id, state: record.data.status as MemoryExecutionState, ...(typeof record.data.exitCode === 'number' ? { exitCode: record.data.exitCode } : {}) }} />}
       {typeof record.data.error === 'string' && <p role="alert">{record.data.error}</p>}{typeof record.data.deliveryError === 'string' && <p>{zh ? '结果投递失败：' : 'Result delivery failed: '}{String(record.data.deliveryError)}</p>}
       <footer>{record.data.status === 'draft' && <button disabled={busy || !props.writable} onClick={() => void preview()}>{zh ? '预览执行计划' : 'Preview execution plan'}</button>}
       {['queued', 'running'].includes(String(record.data.status)) && <button disabled={busy || !props.writable} onClick={() => void operate('stop-job', { id: selected })}>{zh ? '取消任务' : 'Cancel job'}</button>}

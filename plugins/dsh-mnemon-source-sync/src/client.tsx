@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { installMemorySourceUI, type MemorySourcePageProps, type MemorySourceUIContext } from 'dsh-mnemon/client'
 import type { MemoryJsonValue, MemoryTransferCatalog, MemoryTransferSnapshot, MemoryTransferTrack } from 'dsh-mnemon/contracts'
-import type { RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { RecordValue } from 'dsh-mnemon/source-sdk'
 import { canonical, type Binding, type CapturedTrack, type SyncPlan } from './protocol.ts'
 import { syncStyles } from './styles.ts'
 export const inject = ['slots']

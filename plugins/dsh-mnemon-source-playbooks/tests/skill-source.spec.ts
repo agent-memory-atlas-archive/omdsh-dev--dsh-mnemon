@@ -6,7 +6,7 @@ import { expect, it } from 'vitest'
 import { MemoryCompositionRunner } from 'dsh-mnemon/testing'
 import { COMPOSABLE_MEMORY_API_VERSION, DEFAULT_MEMORY_VIEW_BUDGET, type MemoryJsonValue } from 'dsh-mnemon/contracts'
 import { defineMemoryStrategy, installMemory } from 'dsh-mnemon/extension-sdk'
-import type { RecordSnapshot, RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { RecordSnapshot, RecordValue } from 'dsh-mnemon/source-sdk'
 import { createPlaybooksSource } from '../src/index.ts'
 import type { SkillBasis } from '../src/skill-store.ts'
 
@@ -46,7 +46,8 @@ it('inspects owned evidence, keeps drafts out of native reads and requires every
     const revision = { basisId: feedback.id, title: 'Output review', reason: 'Handle empty input', bundle: revised, baseId: candidate.id }
     await later.executeRoute(laterRoute('skill-read'), { id: candidate.id })
     await expect(later.executeAction(laterAction('propose-skill'), json(revision), () => true)).rejects.toThrow('Read every file')
-    await later.executeRoute(laterRoute('skill-read'), { id: candidate.id, path: 'references/checklist.md' })
+    const resource = await later.executeRoute(laterRoute('skill-read'), { id: candidate.id, path: 'references/checklist.md' })
+    expect(resource.items[0]?.reference).toEqual({ id: candidate.id, revision: candidate.data.contentDigest, path: 'references/checklist.md' })
     expect((await later.executeAction(laterAction('propose-skill'), json(revision), () => true)).completion).toBe('candidate')
     const other = await runner.managementClient('source:skills', { ...scope, workspaceId: '/project-b' })
     expect(((await other.read('skills-snapshot', {})).value as unknown as RecordSnapshot).records).toHaveLength(0)

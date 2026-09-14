@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { expect, it } from 'vitest'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import { RecordStore } from 'dsh-mnemon-workspace-kit'
+import { RecordStore } from 'dsh-mnemon/source-sdk'
 import { JournalProgress } from '../src/progress.ts'
 it('tracks only completed human turns, stays due, resets on writes and survives restart', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'mnemon-journal-progress-')), progress = new JournalProgress(new RecordStore(directory), 2)

@@ -1,4 +1,4 @@
-import type { MemoryJsonValue, MemoryPluginLocalizedText, MemoryPluginRole, MemoryViewGuidance, MemoryViewSourcePresentation } from '../core/contracts/index.ts'
+import type { MemoryAccessSemantics, MemoryContextDecisionTrace, MemoryContextProfile, MemoryJsonValue, MemoryOperationSemantics, MemoryPluginLocalizedText, MemoryPluginRole, MemorySourceOperationInventory, MemoryViewGuidance, MemoryViewSourcePresentation } from '../core/contracts/index.ts'
 import type { TurnMemoryActivity } from './protocol.ts'
 import type { MemoryStrategyConfigurationField } from '../sdk/strategy-configuration.ts'
 
@@ -45,8 +45,9 @@ export interface MemoryViewInspection {
   extensions: Array<{ instanceKey: string; typeId: string; slot: string; digest: string }>
   projection: Array<{ id: string; sourceInstanceKey: string; mode: string; text: string; revision: string }>
   sourcePresentations?: MemoryViewSourcePresentation[]
-  routes: Array<{ id: string; sourceInstanceKey: string; operationId: string; description: string; maxCalls: number }>
-  actions: Array<{ id: string; sourceInstanceKey: string; operationId: string; description: string }>
+  routes: Array<{ id: string; sourceInstanceKey: string; operationId: string; description: string; maxCalls: number; access?: MemoryAccessSemantics }>
+  actions: Array<{ id: string; sourceInstanceKey: string; operationId: string; description: string; operation?: MemoryOperationSemantics; requiresApproval?: boolean }>
+  decisions?: MemoryContextDecisionTrace[]
   memoryText: string
   guidance?: MemoryViewGuidance
   diagnostics: string[]
@@ -61,7 +62,7 @@ export interface MemoryViewDashboard {
   /** Durable activity observed after the frozen current View was compiled. */
   activity?: TurnMemoryActivity
   currentUnavailable?: 'no-session' | 'unaligned' | 'not-generated'
-  sources: Array<{ sourceInstanceKey: string; sourceTypeId: string; packageName: string; role: string; label: string }>
+  sources: Array<{ sourceInstanceKey: string; sourceTypeId: string; packageName: string; role: string; label: string; context?: MemoryContextProfile; operations?: MemorySourceOperationInventory; managementOperations?: MemorySourceOperationInventory }>
   pluginInstallation: MemoryPluginInstallationEnvironment
   diagnostics: string[]
 }

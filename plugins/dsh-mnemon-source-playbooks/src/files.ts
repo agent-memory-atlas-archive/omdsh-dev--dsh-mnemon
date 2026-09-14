@@ -3,7 +3,7 @@ import { link, mkdir, open, rename, rm, rmdir, stat } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { lock } from 'proper-lockfile'
 import { withMemoryStorageLock } from 'dsh-mnemon/extension-sdk'
-import { allowedDirectories, allowedFile, digest, readBoundedFile, resolveRipgrepPath, runBoundedProcess } from 'dsh-mnemon-workspace-kit'
+import { allowedDirectories, allowedFile, digest, readBoundedFile, resolveRipgrepPath, runBoundedProcess } from 'dsh-mnemon/source-sdk'
 
 export async function listSkillFiles(roots: string[], signal?: AbortSignal): Promise<string[]> {
   const allowed = await allowedDirectories(roots)

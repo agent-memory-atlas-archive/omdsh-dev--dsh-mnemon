@@ -3,7 +3,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from 'schemastery'
 import { COMPOSABLE_MEMORY_API_VERSION, type MemoryCapability, type MemoryJsonValue, type MemorySourceDefinition } from 'dsh-mnemon/contracts'
 import { createMemoryMutationReceipt, defineMemoryPlugin, defineMemorySource, installMemory, memoryConfigurationDigest, memoryInputInteger, memoryInputRecord, memoryInputText, truncateMemoryText } from 'dsh-mnemon/extension-sdk'
-import { json, sourceRecordDirectory, visibleRecord } from 'dsh-mnemon-workspace-kit'
+import { json, sourceRecordDirectory, visibleRecord } from 'dsh-mnemon/source-sdk'
 import { boardVisible, CanvasEngine, materialIdentity, type CanvasConfig } from './engine.ts'
 export type { CanvasConfig, MaterialContent } from './engine.ts'
 export const name = 'dsh-mnemon-source-canvas'
@@ -15,9 +15,9 @@ const capabilities: MemoryCapability[] = ['status', 'project', 'recall', 'write'
 const schema: MemoryJsonValue = { type: 'object', additionalProperties: false, properties: { id: { type: 'string' }, query: { type: 'string', maxLength: 1000 }, limit: { type: 'integer', minimum: 1, maximum: 50 } } }
 const noteSchema: MemoryJsonValue = { type: 'object', additionalProperties: false, required: ['title', 'content'], properties: { title: { type: 'string', maxLength: 300 }, content: { type: 'string', maxLength: 100000 }, scope: { type: 'string', enum: ['global', 'project', 'session'] }, x: { type: 'number' }, y: { type: 'number' } } }
 export function createCanvasSource(config: Config = {}): MemorySourceDefinition {
-  return defineMemorySource({ manifest: { apiVersion: COMPOSABLE_MEMORY_API_VERSION, kind: 'source', typeId: 'canvas', packageName: name, role: 'canvas', capabilities, consistency: 'namespace-pinned-live-read', management: { label: 'Material board', description: 'A scoped spatial board with live file references and registered uploads.' },
-    routes: [{ id: 'list', description: 'Find registered material cards by ID or text. Their contents are never injected automatically.', capability: 'recall', inputSchema: schema, maxCalls: 6, maxResults: 20, maxCharacters: 12000 }, { id: 'read-node', description: 'Read text or media metadata for a card already admitted to this View. File references are read live; arbitrary paths are not accepted.', capability: 'recall', inputSchema: { ...schema as object, required: ['id'] } as MemoryJsonValue, maxCalls: 6, maxResults: 1, maxCharacters: 12000 }],
-    actions: [{ id: 'add-note', description: 'Place a new attributed note on the material board. Does not modify files or existing cards.', capability: 'write', inputSchema: noteSchema }],
+  return defineMemorySource({ manifest: { context: {"mode":"routed","weight":1} satisfies import('dsh-mnemon/contracts').MemoryContextProfile, apiVersion: COMPOSABLE_MEMORY_API_VERSION, kind: 'source', typeId: 'canvas', packageName: name, role: 'canvas', capabilities, consistency: 'namespace-pinned-live-read', management: { label: 'Material board', description: 'A scoped spatial board with live file references and registered uploads.' },
+    routes: [{ access: {"kinds":["browse"],"result":"resources"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'list', description: 'Find registered material cards by ID or text. Their contents are never injected automatically.', capability: 'recall', inputSchema: schema, maxCalls: 6, maxResults: 20, maxCharacters: 12000 }, { access: {"kinds":["read"],"result":"resources"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'read-node', description: 'Read text or media metadata for a card already admitted to this View. File references are read live; arbitrary paths are not accepted.', capability: 'recall', inputSchema: { ...schema as object, required: ['id'] } as MemoryJsonValue, maxCalls: 6, maxResults: 1, maxCharacters: 12000 }],
+    actions: [{ operation: {"effects":["append"],"execution":"immediate"} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics, id: 'add-note', description: 'Place a new attributed note on the material board. Does not modify files or existing cards.', capability: 'write', inputSchema: noteSchema }],
   }, create(context) {
     const engine = new CanvasEngine(sourceRecordDirectory('canvas', context, config), config)
     return {

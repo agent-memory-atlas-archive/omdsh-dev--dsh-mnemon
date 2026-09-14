@@ -1,12 +1,12 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import type { RecordSourceOptions } from 'dsh-mnemon-workspace-kit'
+import type { RecordSourceOptions } from 'dsh-mnemon/source-sdk'
 const execute = promisify(execFile)
 export async function currentBranch(workspaceId?: string): Promise<string> {
   if (!workspaceId) return ''
   try { return (await execute('git', ['-C', workspaceId, 'branch', '--show-current'], { timeout: 1000, maxBuffer: 4096 })).stdout.trim() } catch { return '' }
 }
-export const sourceOptions: RecordSourceOptions = {
+export const sourceOptions: RecordSourceOptions = { context: {"mode":"eager","weight":10} satisfies import('dsh-mnemon/contracts').MemoryContextProfile,
   transfer: true, reviewedRevisions: true,
   typeId: 'project-context', role: 'project-context', label: 'Project notes', description: 'Branch-aware facts, decisions and working notes.',
   kinds: ['fact', 'decision', 'note'], scopes: ['project', 'session'], defaultScope: 'project',

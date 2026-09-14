@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { MemoryMarkdown, MemoryMarkdownEditor, MemoryPluginSurface, useRequestVersion, type MemorySourcePageProps } from 'dsh-mnemon/client'
-import { managementError } from 'dsh-mnemon-workspace-kit/client'
+import { managementError } from 'dsh-mnemon/client'
 
 type SkillFile = { path: string; content: string; digest: string }
 

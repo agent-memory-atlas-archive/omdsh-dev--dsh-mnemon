@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { installMemorySourceUI, installMemorySourceOverlayUI, MemorySourcePageFrame, type MemorySourcePageProps, type MemorySourceUIContext } from 'dsh-mnemon/client'
 import type { MemoryJsonValue } from 'dsh-mnemon/contracts'
-import type { AssetReference, RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { AssetReference, RecordValue } from 'dsh-mnemon/source-sdk'
 import type { DeliveryPlan } from './delivery.ts'
 import { notificationStyles } from './styles.ts'
 export const inject = ['slots']

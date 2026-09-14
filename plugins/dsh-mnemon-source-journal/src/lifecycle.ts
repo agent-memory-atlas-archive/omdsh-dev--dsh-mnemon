@@ -1,7 +1,8 @@
 import type {} from '@deepseek-ai/dsh-command-feedback'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
-import { newRecord, RecordStore, type RecordValue, type WorkspaceActivity } from 'dsh-mnemon-workspace-kit'
+import { newRecord, RecordStore, type RecordValue } from 'dsh-mnemon/source-sdk'
+import { type WorkspaceActivity } from 'dsh-mnemon-workspace-kit'
 import { agentMemoryScope, visibleMessages } from 'dsh-mnemon-workspace-kit/dsh'
 import { sourceOptions } from './source.ts'
 export interface JournalCaptureConfig { captureTurns?: boolean; captureFeedback?: boolean; captureJobResults?: boolean }

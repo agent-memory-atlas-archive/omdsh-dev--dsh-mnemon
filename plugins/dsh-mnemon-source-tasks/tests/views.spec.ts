@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import type { RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { RecordValue } from 'dsh-mnemon/source-sdk'
 import { filterTasks, taskQuadrant, type TaskFilters } from '../src/views.tsx'
 const make = (id: string, data: RecordValue['data'], kind = 'project'): RecordValue => ({ id, kind, data, title: id, content: '', state: 'active', scope: 'project', workspaceId: '/project', signals: 1, version: 1, history: [], createdAt: '2026-09-09T00:00:00Z', updatedAt: '2026-09-09T00:00:00Z' })
 const filters: TaskFilters = { kind: '', status: '', due: '', date: '', category: '' }

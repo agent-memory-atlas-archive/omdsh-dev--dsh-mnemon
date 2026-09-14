@@ -46,3 +46,4 @@ export function installLearningCapture(ctx: Context, learning: LearningStore, so
   })
   return async () => { stopOperations(); stopActivity(); abort.abort(); await stopHooks(); await Promise.allSettled([...pending]) }
 }
+import type {} from 'dsh-mnemon-workspace-kit'

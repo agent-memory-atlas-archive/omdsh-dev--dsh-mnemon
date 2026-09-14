@@ -1,5 +1,6 @@
 import type { MemoryOperationScope } from 'dsh-mnemon/contracts'
-import { newRecord, RecordStore, reviseRecord, visibleRecord, type WorkspaceActivity } from 'dsh-mnemon-workspace-kit'
+import { newRecord, RecordStore, reviseRecord, visibleRecord } from 'dsh-mnemon/source-sdk'
+import { type WorkspaceActivity } from 'dsh-mnemon-workspace-kit'
 import { members } from './rooms.ts'
 import { declareResource, releaseOwnedResources, writeConflicts, type ProjectFile } from './resources.ts'
 

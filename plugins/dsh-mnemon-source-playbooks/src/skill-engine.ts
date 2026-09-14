@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import type { MemoryOperationScope } from 'dsh-mnemon/contracts'
-import { json, newRecord, reviseRecord, type RecordValue, type WorkspaceActivity } from 'dsh-mnemon-workspace-kit'
+import { json, newRecord, reviseRecord, type RecordValue } from 'dsh-mnemon/source-sdk'
+import { type WorkspaceActivity } from 'dsh-mnemon-workspace-kit'
 import { inspectSkillBundle, materializeSkillBundle, parseSkillBundle, redactSkillText, verifySkillFiles, type SkillCheck, type SkillBundle } from './skill-bundle.ts'
 import { skillBundle, SkillStore, type SkillBasis, type SkillValidationResult } from './skill-store.ts'
 

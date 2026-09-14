@@ -219,7 +219,7 @@ RSI 应保存可复现候选输入/制品，对照已知组合评估，经明确
 
 `dsh-mnemon/contracts` 导出 `MemoryTransferCatalog`、`MemoryTransferTrack` 和 `MemoryTransferSnapshot`，它们定义可选的人类管理协议：`transfer-catalog` 列出 Source 支持的轨道；`transfer-export` 返回指定轨道的快照；`transfer-import` 接收 `{ snapshot }`，要求显式确认和最新 Source 版本。导入返回规范化后的快照与版本，使协调页面能在中断后核对已有回执再继续。
 
-条目校验、作用域重新绑定、幂等性、容量与恢复历史均由数据所属 Source 负责。快照不能导入本机权限、文件系统根目录、运行时对象或另一 Source 的版本号。记录类 Source 可通过 `dsh-mnemon-workspace-kit` 的 `transfer: true` 选用此协议；会话轨道不参与，删除由明确状态表达，缺少条目会保留本机内容。独立同步 Source 仅使用公开客户端、自有计划和 Git 裸仓库；Host 与 Strategy 无需维护同步业务注册表。
+条目校验、作用域重新绑定、幂等性、容量与恢复历史均由数据所属 Source 负责。快照不能导入本机权限、文件系统根目录、运行时对象或另一 Source 的版本号。记录类 Source 可通过 `dsh-mnemon/source-sdk` 的 `transfer: true` 选用此协议；会话轨道不参与，删除由明确状态表达，缺少条目会保留本机内容。独立同步 Source 仅使用公开客户端、自有计划和 Git 裸仓库；Host 与 Strategy 无需维护同步业务注册表。
 
 ### 可选的操作观察
 
@@ -230,3 +230,5 @@ Source 可在管理结果或写入回执详情中返回受限的 `records: [{ id
 可选插件页面使用 `dsh-mnemon/client` 的 `MemoryPluginSurface`、`MemoryPluginNotice`、`MemoryPluginMetrics` 与 `memoryPluginStyles`。自定义布局可将 `memoryPluginTokens` 中的 CSS 声明放到自身根节点，使用其中的 `--mc-*` 语义主题色。这些浏览器控件沿用 DSH 主题和键盘焦点样式，不包含 Source 执行权限。策略配置字段支持 `input: 'boolean'`，纯工厂执行前会校验布尔类型。
 
 `MemoryMarkdown` 使用 DSH 的公开 Markdown 渲染器。`MemoryMarkdownEditor` 提供预览、未保存提示、显式放弃修改和 ⌘/Ctrl+S 保存。传入 `value`、`savedValue`、`locale`、`label`、`onChange`、`onSave`，也可用 `dirty` 纳入同一次保存中的其他字段。Source 仍负责作用域、版本校验、持久化与错误处理；保存成功前保留打开文档时的版本，失败时保留草稿，切换工作区后丢弃旧响应。
+
+参见[结构化上下文访问](context-access.md)，了解公共访问、操作、资源与策略契约。

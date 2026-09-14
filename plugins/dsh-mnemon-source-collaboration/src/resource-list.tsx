@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { MemorySourcePageProps } from 'dsh-mnemon/client'
-import type { RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { RecordValue } from 'dsh-mnemon/source-sdk'
 interface ResourcePage { items: RecordValue[]; total: number; presence: Array<{ owner: string; status: string; at: string }>; writeConflictPolicy: string; captureWrites: boolean; error: string }
 export function ResourceList(props: MemorySourcePageProps) {
   const zh = props.locale.startsWith('zh'), t = (en: string, cn: string) => zh ? cn : en

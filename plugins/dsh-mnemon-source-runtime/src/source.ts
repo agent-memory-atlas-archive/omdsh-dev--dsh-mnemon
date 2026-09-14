@@ -31,7 +31,7 @@ function runtimeMutation(value: MemoryJsonValue): RuntimeMemoryMutation {
 export function createRuntimeMemorySource(config: Config = {}): MemorySourceDefinition {
  const configured = Object.freeze({ ...config })
  return defineMemorySource({
-  manifest: {
+  manifest: { context: {"mode":"eager","weight":16} satisfies import('dsh-mnemon/contracts').MemoryContextProfile,
     apiVersion: COMPOSABLE_MEMORY_API_VERSION,
     kind: 'source',
     typeId: 'runtime',
@@ -39,7 +39,7 @@ export function createRuntimeMemorySource(config: Config = {}): MemorySourceDefi
     role: 'working-context',
     capabilities: ['status', 'project', 'write', 'export', 'import'],
     consistency: 'exact-snapshot',
-    actions: [{
+    actions: [{ operation: {"effects":["append","update","remove"],"execution":"immediate"} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics,
       id: 'mutate',
       description: 'Add, replace, or remove an entry in Runtime Memory.',
       capability: 'write',

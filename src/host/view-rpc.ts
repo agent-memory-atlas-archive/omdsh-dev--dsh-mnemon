@@ -58,7 +58,14 @@ export function createViewHandler(runtime: LiveMnemonRuntime, engine: MemoryRunt
           ...(activity === undefined ? {} : { activity }),
           sources: snapshot.sources.map(source => ({ sourceInstanceKey: source.instanceKey, sourceTypeId: source.definition.manifest.typeId,
             packageName: source.definition.manifest.packageName, role: source.definition.manifest.role,
-            label: source.definition.manifest.management?.label ?? source.definition.manifest.typeId })),
+            label: source.definition.manifest.management?.label ?? source.definition.manifest.typeId,
+            ...(source.definition.manifest.context ? { context: source.definition.manifest.context } : {}),
+            operations: {
+              reads: (source.definition.manifest.routes ?? []).map(({ id, description, access }) => ({ id, description, ...(access ? { access } : {}) })),
+              actions: (source.definition.manifest.actions ?? []).map(({ id, description, operation, authority }) => ({ id, description, requiresApproval: authority !== undefined, ...(operation ? { operation } : {}) })),
+            },
+            ...(source.definition.manifest.management?.operations ? { managementOperations: source.definition.manifest.management.operations } : {}),
+          })),
           pluginInstallation: installation?.environment() ?? { supported: false, reason: 'loader-unavailable', suggestions: [] },
         }
         return { ok: true, value }

@@ -1,59 +1,75 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_MEMORY_VIEW_BUDGET, type MemoryAvailableSource } from 'dsh-mnemon/contracts'
-import { WORKSPACE_STRATEGY, WORKSPACE_SOURCE_ROLES } from '../src/strategy.ts'
-import { validateWorkspacePolicy } from '../src/extension-sdk.ts'
-const source = (role: string, index: number): MemoryAvailableSource => ({ sourceInstanceKey: 'source:item-' + index, sourceTypeId: role, role, availability: 'ready', revision: 'r1', capabilities: ['project', 'recall', 'write'], routeIds: ['search'], actionIds: ['propose'],
-  routes: [{ id: 'search', description: 'Search', capability: 'recall', inputSchema: {}, maxCalls: 2 }],
-  actions: [{ id: 'propose', description: 'Propose', capability: 'write', inputSchema: {} }] })
-const request = { scope: { storage: 'custom' as const }, scenario: 'test', budget: DEFAULT_MEMORY_VIEW_BUDGET }
-describe('workspace composition', () => {
-  it('keeps source-specific capture reminders inside actual write selections and budgets', () => {
-    const journal = source('activity-log', 1), capture = { instanceKey: 'strategy-extension:capture', typeId: 'journal-capture', slot: 'capture', value: { instruction: 'Capture outcomes.', reminders: [{ sourceKey: journal.sourceInstanceKey, instruction: 'Journal entry due.' }, { sourceKey: 'source:foreign', instruction: 'Never include this.' }] } }
-    const result = WORKSPACE_STRATEGY.compose(request, [journal], [capture])
-    expect(result.guidance?.system).toContain('Journal entry due.')
-    expect(result.guidance?.system).not.toContain('Never include')
-    const budget = WORKSPACE_STRATEGY.compose({ ...request, budget: { ...request.budget, maxActions: 0 } }, [journal], [capture])
-    expect(budget.guidance?.system).not.toContain('Journal entry due.')
-    const readonly = WORKSPACE_STRATEGY.compose(request, [journal], [capture, { instanceKey: 'strategy-extension:focus', typeId: 'focus', slot: 'focus', value: { sourceKeys: [journal.sourceInstanceKey], writableSourceKeys: [], maxProjectionCharacters: 100 } }])
-    expect(readonly.guidance?.system).not.toContain('Journal entry due.')
-    expect(() => validateWorkspacePolicy('capture', { instruction: 'Capture', reminders: [{ sourceKey: 'source:one', instruction: 'Due', execute: true }] })).toThrow('Unsupported capture reminder')
-  })
-  it('composes all supported roles deterministically within one budget', () => {
-    const sources = WORKSPACE_SOURCE_ROLES.map(source)
-    const result = WORKSPACE_STRATEGY.compose(request, sources)
-    expect(result).toEqual(WORKSPACE_STRATEGY.compose(request, sources.slice().reverse()))
-    expect(result.sources).toHaveLength(sources.length)
-    expect(result.sources.reduce((sum, value) => sum + (value.projection?.maxCharacters ?? 0), 0)).toBeLessThanOrEqual(request.budget.maxProjectionCharacters)
-    expect(result.sources.every(value => value.routeIds?.length === 1 && value.actionIds?.length === 1)).toBe(true)
-  })
-  it('rejects ambiguity and honors explicit Source order and read-only subsets', () => {
-    const sources = [source('task-context', 1), source('task-context', 2)]
-    expect(() => WORKSPACE_STRATEGY.compose(request, sources)).toThrow(/Ambiguous/)
-    const result = WORKSPACE_STRATEGY.compose(request, sources, [{ instanceKey: 'strategy-extension:focus', typeId: 'focus', slot: 'focus', value: { sourceKeys: ['source:item-2', 'source:item-1'], writableSourceKeys: ['source:item-1'], maxProjectionCharacters: 512 } }])
-    expect(result.sources[0]?.sourceInstanceKey).toBe('source:item-2')
-    expect(result.sources[0]?.actionIds).toEqual([])
-    expect(result.sources[1]?.actionIds).toEqual(['propose'])
-    expect(() => validateWorkspacePolicy('focus', { sourceKeys: ['source:one'], writableSourceKeys: ['source:two'], maxProjectionCharacters: 500 })).toThrow(/subset/)
-  })
-  it('does not let early Sources consume every route or action', () => {
-    const first = source('working-context', 1)
-    first.routes.push(...Array.from({ length: 10 }, (_, index) => ({ ...first.routes[0]!, id: 'extra-' + index })))
-    first.routeIds = first.routes.map(route => route.id)
-    const result = WORKSPACE_STRATEGY.compose({ ...request, budget: { ...request.budget, maxRoutes: 3, maxActions: 1 } }, [first, source('task-context', 2), source('activity-log', 3)])
-    expect(result.sources.every(value => value.routeIds?.length === 1)).toBe(true)
-    expect(result.sources.flatMap(value => value.actionIds ?? [])).toHaveLength(1)
-  })
-})
+import { DEFAULT_MEMORY_VIEW_BUDGET, MEMORY_CONTEXT_POLICY_FORMAT, type MemoryAvailableSource, type MemoryContextPolicy, type MemoryJsonValue } from 'dsh-mnemon/contracts'
+import { validateMemoryContextSelection } from 'dsh-mnemon/extension-sdk'
+import { WORKSPACE_STRATEGY } from '../src/strategy.ts'
 
-it('supports a larger explicit budget without discarding later Source operations', () => {
-  const sources = WORKSPACE_SOURCE_ROLES.map(source)
-  for (const item of sources) {
-    item.routes = Array.from({ length: 4 }, (_, index) => ({ ...item.routes[0]!, id: 'read-' + index }))
-    item.actions = Array.from({ length: 4 }, (_, index) => ({ ...item.actions[0]!, id: 'write-' + index }))
-  }
-  const result = WORKSPACE_STRATEGY.compose({ ...request, budget: { ...request.budget, maxRoutes: 96, maxActions: 96 } }, sources)
-  expect(result.sources.flatMap(source => source.routeIds ?? [])).toHaveLength(64)
-  expect(result.sources.flatMap(source => source.actionIds ?? [])).toHaveLength(64)
-  const empty = WORKSPACE_STRATEGY.compose(request, sources, [{ instanceKey: 'strategy-extension:focus', typeId: 'focus', slot: 'focus', value: { sourceKeys: [], maxProjectionCharacters: 100 } }])
-  expect(empty.sources).toEqual([])
+const source = (role: string, index: number): MemoryAvailableSource => ({ sourceInstanceKey: 'source:item-' + index, sourceTypeId: role, role, availability: 'ready', revision: 'r1', capabilities: ['project', 'recall', 'write'], routeIds: ['search'], actionIds: ['propose'],
+  routes: [{ id: 'search', description: 'Search', capability: 'recall', inputSchema: {}, maxCalls: 2, access: { kinds: ['search'], result: 'records' } }],
+  actions: [{ id: 'propose', description: 'Propose', capability: 'write', inputSchema: {}, operation: { effects: ['propose'], execution: 'immediate' } }] })
+const request = { scope: { storage: 'custom' as const }, scenario: 'test', budget: DEFAULT_MEMORY_VIEW_BUDGET }
+const contribution = (value: Omit<MemoryContextPolicy, 'format'>, key = 'policy') => ({ instanceKey: 'strategy-extension:' + key, typeId: key, slot: key, value: { format: MEMORY_CONTEXT_POLICY_FORMAT, ...value } as unknown as MemoryJsonValue })
+const decision = (item: MemoryAvailableSource) => ({ id: 'follow-up', sourceInstanceKey: item.sourceInstanceKey, ready: true, reason: { en: 'Evidence is ready.', 'zh-CN': '证据已就绪。' }, requires: { routeIds: ['search'], actionIds: ['propose'] }, instruction: 'Inspect the evidence and propose a reviewed update.' })
+
+describe('capability-based workspace composition', () => {
+  it('accepts unfamiliar roles and multiple independent instances deterministically', () => {
+    const sources = Array.from({ length: 16 }, (_, index) => source(index % 2 ? 'external-directory' : 'external-records', index))
+    const view = WORKSPACE_STRATEGY.compose(request, sources)
+    expect(view).toEqual(WORKSPACE_STRATEGY.compose(request, sources.slice().reverse()))
+    expect(view.sources).toHaveLength(16)
+    expect(view.sources.reduce((sum, item) => sum + (item.projection?.maxCharacters ?? 0), 0)).toBeLessThanOrEqual(request.budget.maxProjectionCharacters)
+  })
+  it('keeps decisions behind write restrictions and operation budgets', () => {
+    const item = source('external-records', 1), policy = contribution({ decisions: [decision(item)] })
+    const compose = (extra: ReturnType<typeof contribution>[] = [], budget = request.budget) => WORKSPACE_STRATEGY.compose({ ...request, budget }, [item], [policy, ...extra])
+    expect(compose().decisions?.[0]?.state).toBe('applied')
+    // Instructions are bound by Core after Source projection succeeds.
+    expect(compose().guidance?.system).not.toContain('Inspect the evidence')
+    const readOnly = compose([contribution({ decisions: [], selection: { sourceKeys: [item.sourceInstanceKey], writableSourceKeys: [] } }, 'focus')])
+    expect(readOnly.decisions?.[0]?.state).toBe('excluded')
+    expect(readOnly.guidance?.system).not.toContain('Inspect the evidence')
+    const bounded = compose([], { ...request.budget, maxActions: 0 })
+    expect(bounded.decisions?.[0]?.state).toBe('budget')
+    expect(bounded.guidance?.system).not.toContain('Inspect the evidence')
+  })
+  it('records unmet conditions without applying their context demand', () => {
+    const item = source('external-records', 1)
+    const result = WORKSPACE_STRATEGY.compose(request, [item], [contribution({ decisions: [{ ...decision(item), ready: false, context: { mode: 'eager', weight: 20 } }] })])
+    expect(result.decisions?.[0]?.state).toBe('deferred')
+    expect(result.sources[0]?.projection?.mode).toBe('routed')
+    expect(result.guidance?.system).not.toContain('Inspect the evidence')
+  })
+  it('honors explicit order and intersects independent restrictions', () => {
+    const sources = [source('records', 1), source('records', 2), source('resources', 3)]
+    const ordered = WORKSPACE_STRATEGY.compose(request, sources, [contribution({ decisions: [], selection: { sourceKeys: ['source:item-2', 'source:item-1'], writableSourceKeys: ['source:item-1'], maxProjectionCharacters: 512 } })])
+    expect(ordered.sources.map(source => source.sourceInstanceKey)).toEqual(['source:item-2', 'source:item-1'])
+    expect(ordered.sources[0]?.actionIds).toEqual([])
+    const restricted = WORKSPACE_STRATEGY.compose(request, sources, [contribution({ decisions: [], selection: { sourceKeys: ['source:item-1'] } }), contribution({ decisions: [], selection: { sourceKeys: ['source:item-1', 'source:item-3'], maxProjectionCharacters: 100 } }, 'second')])
+    expect(restricted.sources.map(source => source.sourceInstanceKey)).toEqual(['source:item-1'])
+    expect(restricted.sources[0]?.projection?.maxCharacters).toBe(100)
+    expect(() => validateMemoryContextSelection({ sourceKeys: ['source:one'], writableSourceKeys: ['source:two'] })).toThrow(/subset/)
+  })
+  it('rejects invented operations', () => {
+    const item = source('records', 1)
+    expect(() => WORKSPACE_STRATEGY.compose(request, [item], [contribution({ decisions: [{ ...decision(item), requires: { actionIds: ['hidden-write'] } }] })])).toThrow(/unavailable operation/)
+  })
+  it('shares capacity fairly while prioritizing prerequisites', () => {
+    const sources = [source('records', 1), source('resources', 2), source('events', 3)]
+    sources[0]!.routes.push({ ...sources[0]!.routes[0]!, id: 'needed' }); sources[0]!.routeIds.push('needed')
+    const result = WORKSPACE_STRATEGY.compose({ ...request, budget: { ...request.budget, maxRoutes: 3, maxActions: 1 } }, sources, [contribution({ decisions: [{ ...decision(sources[0]!), requires: { routeIds: ['needed'] } }] })])
+    expect(result.sources.every(source => source.routeIds?.length === 1)).toBe(true)
+    expect(result.sources[0]?.routeIds).toEqual(['needed'])
+    expect(result.sources.flatMap(source => source.actionIds ?? [])).toHaveLength(1)
+  })
+  it('supports larger budgets and deliberately empty selections', () => {
+    const sources = Array.from({ length: 16 }, (_, index) => source('external-' + index, index))
+    for (const item of sources) {
+      item.routes = Array.from({ length: 4 }, (_, index) => ({ ...item.routes[0]!, id: 'read-' + index }))
+      item.actions = Array.from({ length: 4 }, (_, index) => ({ ...item.actions[0]!, id: 'write-' + index }))
+      item.routeIds = item.routes.map(route => route.id); item.actionIds = item.actions.map(action => action.id)
+    }
+    const result = WORKSPACE_STRATEGY.compose({ ...request, budget: { ...request.budget, maxRoutes: 96, maxActions: 96 } }, sources)
+    expect(result.sources.flatMap(source => source.routeIds ?? [])).toHaveLength(64)
+    expect(result.sources.flatMap(source => source.actionIds ?? [])).toHaveLength(64)
+    expect(WORKSPACE_STRATEGY.compose(request, sources, [contribution({ decisions: [], selection: { sourceKeys: [] } })]).sources).toEqual([])
+  })
 })

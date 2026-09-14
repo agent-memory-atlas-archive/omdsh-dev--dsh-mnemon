@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import type { MemorySourcePageProps } from 'dsh-mnemon/client'
-import type { RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { RecordValue } from 'dsh-mnemon/source-sdk'
 export function activityDay(record: RecordValue) {
   if (record.date) return record.date
   const date = new Date(typeof record.data.eventAt === 'string' ? record.data.eventAt : record.createdAt)

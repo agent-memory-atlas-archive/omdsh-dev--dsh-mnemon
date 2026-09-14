@@ -16,11 +16,13 @@ const { values } = parseArgs({ options: {
   port: { type: 'string', default: '0' },
   model: { type: 'string', default: 'fixture' },
   'workspace-plugins': { type: 'boolean', default: false },
+  reuse: { type: 'boolean', default: false },
   help: { type: 'boolean', default: false },
 } })
-if (values.help) { console.log('Usage: node scripts/serve-workspace.mjs --state-dir /directory --mnemon /binary [--port 0] [--model fixture|configured] [--workspace-plugins]'); process.exit(0) }
+if (values.help) { console.log('Usage: node scripts/serve-workspace.mjs --state-dir /directory --mnemon /binary [--port 0] [--model fixture|configured] [--workspace-plugins] [--reuse]'); process.exit(0) }
 if (!values['state-dir'] || !values.mnemon) throw new Error('Required: --state-dir /absolute/directory --mnemon /absolute/binary')
 if (!['fixture', 'configured'].includes(values.model)) throw new Error('--model must be fixture or configured')
+if (values.reuse && values.model !== 'configured') throw new Error('--reuse requires --model configured; fixture endpoints must be recreated')
 if (!/^\d{1,5}$/.test(values.port) || Number(values.port) > 65535) throw new Error('Invalid port')
 const state = resolve(values['state-dir'])
 if (state === root || root.startsWith(state + '/')) throw new Error('State directory must be separate from the source checkout')
@@ -154,7 +156,9 @@ let stopping = false
 let restarting = false
 const output = createWriteStream(join(logs, 'dsh.log'), { flags: 'a', mode: 0o600 })
 function launch() {
-  web = spawn(process.execPath, [dshBin, 'web', '--no-open', '--host', '127.0.0.1', '--port', values.port], { cwd: workspace, env, stdio: ['ignore', 'pipe', 'pipe'] })
+  // Browser cookies span loopback ports; many development profiles plus DSH's
+  // batched module URL can exceed Node's 16 KiB default. Keep a bounded test limit.
+  web = spawn(process.execPath, ['--max-http-header-size=32768', dshBin, 'web', '--no-open', '--host', '127.0.0.1', '--port', values.port], { cwd: workspace, env, stdio: ['ignore', 'pipe', 'pipe'] })
   web.stdout.pipe(output, { end: false }); web.stderr.pipe(output, { end: false })
   web.stdout.pipe(process.stdout); web.stderr.pipe(process.stderr)
   web.once('error', error => { console.error(error); process.exitCode = 1; void stop() })
@@ -180,6 +184,8 @@ process.on('SIGUSR2', async () => {
 try {
   await run(native, ['--version'])
   await run(native, ['--data-dir', memory, 'status'])
+  if (values.reuse) await access(join(dshHome, 'profiles/web/cordis.patch.yml'))
+  else {
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
   const legacyEnhancements = new Set(['dsh-mnemon-strategy-auto-capture', 'dsh-mnemon-strategy-light-context', 'dsh-mnemon-strategy-scoped'])
   const packages = Object.keys(manifest.dependencies).filter(name => name.startsWith('dsh-mnemon-') && !legacyEnhancements.has(name))
@@ -224,6 +230,7 @@ ${values['workspace-plugins'] ? '    memoryTopology:\n      strategyId: workspac
   await writeFile(join(dshHome, 'profiles/web/cordis.patch.yml'), patch)
   try { await writeFile(join(workspace, 'README.md'), '# Memory workspace validation\n\nSynthetic content used to validate local services and plugin composition.\n', { flag: 'wx' }) } catch (error) { if (error.code !== 'EEXIST') throw error }
   await writeFile(join(state, 'workspace.code-workspace'), JSON.stringify({ folders: [{ path: root }, { path: workspace }] }, null, 2) + '\n')
+  }
   await writeFile(join(state, 'instance.json'), JSON.stringify({ pid: process.pid, root, state, workspace, dshHome, memory, native, model: values.model, port: Number(values.port) }, null, 2) + '\n', { mode: 0o600 })
   console.log('Workspace state: ' + state)
   console.log('Workspace directory: ' + workspace)

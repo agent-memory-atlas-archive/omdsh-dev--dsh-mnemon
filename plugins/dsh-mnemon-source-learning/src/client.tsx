@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { installMemorySourceUI, MemoryMarkdown, MemoryPluginMetrics, MemoryPluginNotice, MemoryPluginSurface, MemorySourcePageFrame, type MemorySourcePageProps, type MemorySourceUIContext } from 'dsh-mnemon/client'
 import type { MemoryJsonValue } from 'dsh-mnemon/contracts'
-import type { RecordSnapshot, RecordValue } from 'dsh-mnemon-workspace-kit'
-import { managementError } from 'dsh-mnemon-workspace-kit/client'
+import type { RecordSnapshot, RecordValue } from 'dsh-mnemon/source-sdk'
+import { managementError } from 'dsh-mnemon/client'
 export const inject = ['slots']
 type Snapshot = RecordSnapshot & { policy?: { [key: string]: MemoryJsonValue } }
 type Fields = { [key: string]: MemoryJsonValue }

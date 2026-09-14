@@ -2,7 +2,7 @@ import { mkdtemp } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { describe, expect, it } from 'vitest'
-import { newRecord, RecordStore } from 'dsh-mnemon-workspace-kit'
+import { newRecord, RecordStore } from 'dsh-mnemon/source-sdk'
 import { advanceSchedules, makeSchedule, renderPrompt } from '../src/schedule.ts'
 const scope = { storage: 'custom' as const, workspaceId: '/project', sessionId: 'one' }
 describe('explicit prompt schedules', () => {

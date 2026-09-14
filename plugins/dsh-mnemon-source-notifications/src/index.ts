@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from 'schemastery'
 import type { MemoryJsonValue, MemorySourceDefinition } from 'dsh-mnemon/contracts'
 import { createMemoryMutationReceipt, defineMemoryPlugin, installMemory, memoryConfigurationDigest, memoryInputRecord, memoryInputText } from 'dsh-mnemon/extension-sdk'
-import { createRecordSource, digest, json, reviseRecord, sourceRecordDirectory, withLookupRoutes } from 'dsh-mnemon-workspace-kit'
+import { createRecordSource, digest, json, reviseRecord, sourceRecordDirectory, withLookupRoutes } from 'dsh-mnemon/source-sdk'
 import { DshWorkspaceAdapter, agentMemoryScope, installAgentHooks } from 'dsh-mnemon-workspace-kit/dsh'
 import { NotificationEngine, sameWorkspace, validateNotice, type NotificationPort } from './engine.ts'
 import { validateConfig, type NotificationConfig } from './delivery.ts'
@@ -26,7 +26,7 @@ const engines = new Map<string, { engine: NotificationEngine; refs: number }>()
 
 export function createNotificationsSource(config: Config = {}, port: NotificationPort = {}): MemorySourceDefinition {
   validateConfig(config)
-  const base = createRecordSource({ typeId: 'notifications', role: 'notifications', label: 'Notifications', description: 'Personal notification inbox and explicit delivery receipts.', kinds: ['notification', 'delivery'], scopes: ['global'], defaultScope: 'global', modelWrites: 'append',
+  const base = createRecordSource({ context: {"mode":"routed","weight":1} satisfies import('dsh-mnemon/contracts').MemoryContextProfile, typeId: 'notifications', role: 'notifications', label: 'Notifications', description: 'Personal notification inbox and explicit delivery receipts.', kinds: ['notification', 'delivery'], scopes: ['global'], defaultScope: 'global', modelWrites: 'append',
     prepare(record, scope) {
       if (record.kind !== 'notification') throw new Error('Prepare a delivery plan before using a channel')
       record.data = { level: record.data.level ?? 'info', read: false, workspace: scope.workspaceId ?? null, session: scope.sessionId ?? null, assets: [] }
@@ -34,12 +34,12 @@ export function createNotificationsSource(config: Config = {}, port: Notificatio
     project(records) { return `Notifications: ${records.filter(record => record.kind === 'notification' && !record.data.read).length} unread; ${records.filter(record => record.kind === 'delivery' && record.data.status === 'draft').length} prepared deliveries. Local notices stay in the inbox. External sends need the exact reviewed delivery plan and a separate authorization.` },
   }, config)
   const actions = [...base.manifest.actions ?? [],
-    { id: 'prepare-delivery', description: 'Prepare a channel message for review, including its exact targets and registered attachment hashes. Does not send.', capability: 'write' as const, inputSchema: stageSchema },
-    { id: 'send-delivery', description: 'Send the exact reviewed delivery plan to its listed external channel targets once. Requires explicit user authorization.', capability: 'write' as const, authority: 'external-message', inputSchema: sendSchema },
+    { operation: {"effects":["propose"],"execution":"immediate","requiresReadGrant":true} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics, id: 'prepare-delivery', description: 'Prepare a channel message for review, including its exact targets and registered attachment hashes. Does not send.', capability: 'write' as const, inputSchema: stageSchema },
+    { operation: {"effects":["deliver"],"execution":"immediate","requiresReadGrant":true} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics, id: 'send-delivery', description: 'Send the exact reviewed delivery plan to its listed external channel targets once. Requires explicit user authorization.', capability: 'write' as const, authority: 'external-message', inputSchema: sendSchema },
   ]
   const routes = [
-    { id: 'delivery-plan', description: 'Read the complete channel plan for a prepared delivery.', capability: 'recall' as const, inputSchema: idSchema, maxCalls: 4, maxResults: 1, maxCharacters: 12000 },
-    { id: 'channels', description: 'List configured notification channels and their exact targets before preparing a delivery.', capability: 'recall' as const, inputSchema: { type: 'object', additionalProperties: false } as MemoryJsonValue, maxCalls: 2, maxResults: 16, maxCharacters: 12000 },
+    { access: {"kinds":["read"],"result":"records"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'delivery-plan', description: 'Read the complete channel plan for a prepared delivery.', capability: 'recall' as const, inputSchema: idSchema, maxCalls: 4, maxResults: 1, maxCharacters: 12000 },
+    { access: {"kinds":["browse"],"result":"records"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'channels', description: 'List configured notification channels and their exact targets before preparing a delivery.', capability: 'recall' as const, inputSchema: { type: 'object', additionalProperties: false } as MemoryJsonValue, maxCalls: 2, maxResults: 16, maxCharacters: 12000 },
   ]
   const capabilities = base.manifest.capabilities.filter(capability => capability !== 'import')
   return { ...base, manifest: { ...base.manifest, capabilities, actions, consistency: 'namespace-pinned-live-read', routes: [...routes, ...base.manifest.routes ?? []] }, create(context) {

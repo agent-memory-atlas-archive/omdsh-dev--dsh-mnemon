@@ -3,9 +3,8 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { afterEach, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import type { MemorySourcePageProps, MnemonSourceManagementClient } from 'dsh-mnemon/client'
-import { createCollectionPage } from '../src/client.tsx'
-import { RecordActionPanel } from '../src/action-client.tsx'
-vi.mock('dsh-mnemon/client', () => ({ memoryPluginStyles: '', MemorySourcePageFrame: ({children}: {children:ReactNode}) => children }))
+import { createCollectionPage } from '../src/client/collection/client.tsx'
+import { RecordActionPanel } from '../src/client/collection/action-client.tsx'
 afterEach(cleanup)
 it('keeps action forms and results bound to the selected scope during pending mutations', async () => {
   let finish!: (value: unknown) => void

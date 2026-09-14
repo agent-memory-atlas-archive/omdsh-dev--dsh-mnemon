@@ -1,5 +1,5 @@
 import { installMemorySourceUI, type MemorySourcePageProps, type MemorySourceUIContext } from 'dsh-mnemon/client'
-import { createCollectionPage, RecordActionPanel, type RecordActionPanelOptions } from 'dsh-mnemon-workspace-kit/client'
+import { createCollectionPage, RecordActionPanel, type RecordActionPanelOptions } from 'dsh-mnemon/client'
 import type { MemoryJsonValue } from 'dsh-mnemon/contracts'
 import { MessageHistory } from './history.tsx'
 import { ResourceList } from './resource-list.tsx'

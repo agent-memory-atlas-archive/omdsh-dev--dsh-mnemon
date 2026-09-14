@@ -10,19 +10,7 @@ import {
   memoryConfigurationDigest,
   memoryInputRecord,
 } from 'dsh-mnemon/extension-sdk'
-import {
-  AssetStore,
-  createRecordSource,
-  digest,
-  json,
-  RecordStore,
-  reviseRecord,
-  sourceRecordDirectory,
-  visibleRecord,
-  type RecordValue,
-  type AssetInput,
-  type AssetReference,
-} from 'dsh-mnemon-workspace-kit'
+import { AssetStore, createRecordSource, digest, json, RecordStore, reviseRecord, sourceRecordDirectory, visibleRecord, type RecordValue, type AssetInput, type AssetReference } from 'dsh-mnemon/source-sdk'
 import { DshWorkspaceAdapter } from 'dsh-mnemon-workspace-kit/dsh'
 import { Coordination, type CoordinationConfig, type CoordinationPort } from './lifecycle.ts'
 import { addressed, declareResource, localProjectFile, releaseOwnedResources, type ProjectFile } from './resources.ts'
@@ -118,7 +106,7 @@ async function changeReservation(
 }
 export function createCollaborationSource(config: Config, port: CollaborationPort): MemorySourceDefinition {
   const base = createRecordSource(
-    {
+    { context: {"mode":"routed","weight":1} satisfies import('dsh-mnemon/contracts').MemoryContextProfile,
       typeId: 'collaboration',
       role: 'collaboration',
       label: 'Collaboration',
@@ -160,28 +148,28 @@ export function createCollaborationSource(config: Config, port: CollaborationPor
         )
       },
       modelActions: [
-        {
+        { operation: {"effects":["coordinate"],"execution":"immediate","requiresReadGrant":true} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics,
           id: 'reserve-file',
           description: 'Reserve an existing or future project file for this session, or renew its lease.',
           capability: 'write',
           inputSchema: reservationSchema,
         },
-        {
+        { operation: {"effects":["coordinate"],"execution":"immediate","requiresReadGrant":true} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics,
           id: 'release-file',
           description: 'Release a file reservation owned by this session.',
           capability: 'write',
           inputSchema: idSchema,
         },
-        { id: 'leave-room', description: 'Leave a collaboration room.', capability: 'write', inputSchema: idSchema },
-        { id: 'declare-resource', description: 'Declare a shared project file, service URL or named note; update your own declaration.', capability: 'write', inputSchema: { type: 'object', required: ['id', 'resourceType', 'resource'], properties: { id: { type: 'string' }, resourceType: { type: 'string', enum: ['file', 'service', 'note'] }, resource: { type: 'string' }, label: { type: 'string' }, notes: { type: 'string' } }, additionalProperties: false } },
-        { id: 'remove-resource', description: 'Archive your resource declaration.', capability: 'write', inputSchema: idSchema },
-        {
+        { operation: {"effects":["coordinate"],"execution":"immediate","requiresReadGrant":true} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics, id: 'leave-room', description: 'Leave a collaboration room.', capability: 'write', inputSchema: idSchema },
+        { operation: {"effects":["coordinate"],"execution":"immediate","requiresReadGrant":true} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics, id: 'declare-resource', description: 'Declare a shared project file, service URL or named note; update your own declaration.', capability: 'write', inputSchema: { type: 'object', required: ['id', 'resourceType', 'resource'], properties: { id: { type: 'string' }, resourceType: { type: 'string', enum: ['file', 'service', 'note'] }, resource: { type: 'string' }, label: { type: 'string' }, notes: { type: 'string' } }, additionalProperties: false } },
+        { operation: {"effects":["remove"],"execution":"immediate","requiresReadGrant":true} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics, id: 'remove-resource', description: 'Archive your resource declaration.', capability: 'write', inputSchema: idSchema },
+        { operation: {"effects":["coordinate"],"execution":"immediate","requiresReadGrant":true} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics,
           id: 'join-room',
           description: 'Join a room that permits open membership.',
           capability: 'write',
           inputSchema: idSchema,
         },
-        {
+        { operation: {"effects":["update"],"execution":"immediate","requiresReadGrant":true} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics,
           id: 'mark-read',
           description: 'Mark an addressed message as read.',
           capability: 'write',
@@ -222,7 +210,7 @@ export function createCollaborationSource(config: Config, port: CollaborationPor
     ...base.manifest,
     actions: [
       ...(base.manifest.actions ?? []),
-      {
+      { operation: {"effects":["deliver"],"execution":"immediate","requiresReadGrant":true} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics,
         id: 'send-message',
         description:
           'Send the displayed message and attachment references to selected room members. Wake only when explicitly requested.',

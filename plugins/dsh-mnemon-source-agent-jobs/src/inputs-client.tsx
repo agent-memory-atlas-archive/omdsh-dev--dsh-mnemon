@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MemorySourcePageProps } from 'dsh-mnemon/client'
 import type { MemoryJsonValue, MemoryTransferCatalog, MemoryTransferSnapshot } from 'dsh-mnemon/contracts'
-import type { AssetInput, AssetReference, RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { AssetInput, AssetReference, RecordValue } from 'dsh-mnemon/source-sdk'
 import type { ContextCapture } from './inputs.ts'
 interface Track { key: string; sourceKey: string; label: string; track: string }
 export function JobInputPanel(props: MemorySourcePageProps & { record: RecordValue; revision: string; onSaved(): Promise<void> }) {

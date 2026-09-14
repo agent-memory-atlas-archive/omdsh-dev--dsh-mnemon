@@ -10,7 +10,7 @@ import type { SkillCandidate } from '@deepseek-ai/dsh-skill'
 import z from 'schemastery'
 import type { MemoryJsonValue, MemorySourceDefinition, MemorySourceRuntime } from 'dsh-mnemon/contracts'
 import { defineMemoryPlugin, installMemory, memoryConfigurationDigest, memoryInputRecord } from 'dsh-mnemon/extension-sdk'
-import { allowedDirectories, createRecordSource, digest, json, RecordStore, reviseRecord, sourceRecordDirectory, visibleRecord, type RecordSourceConfig } from 'dsh-mnemon-workspace-kit'
+import { allowedDirectories, createRecordSource, digest, json, RecordStore, reviseRecord, sourceRecordDirectory, visibleRecord, type RecordSourceConfig } from 'dsh-mnemon/source-sdk'
 import { agentMemoryScope, DshWorkspaceAdapter, installAgentHooks } from 'dsh-mnemon-workspace-kit/dsh'
 import { sourceOptions } from './source.ts'
 import { advanceSchedules, makeSchedule, renderPrompt } from './schedule.ts'
@@ -28,7 +28,7 @@ export const memoryPlugin = defineMemoryPlugin({ packageName: name, label: { en:
 interface Integration extends SkillIntegration { attach?(store: RecordStore): void }
 export function createPlaybooksSource(config: Config = {}, integration: Integration = {}): MemorySourceDefinition {
   const base = createRecordSource(sourceOptions, config)
-  return { ...base, manifest: { ...base.manifest, routes: [...(base.manifest.routes ?? []).map(route => ({ ...route, inputSchema: { ...(route.inputSchema as object), properties: { ...((route.inputSchema as { properties: object }).properties), ...libraryFields } } })), ...skillRoutes], actions: [...base.manifest.actions ?? [], ...promptActions, ...skillActions] }, create(context) {
+  return { ...base, manifest: { ...base.manifest, management: { ...base.manifest.management!, operations: { reads: [...base.manifest.management?.operations?.reads ?? [], { id: 'skills-native-read', description: 'Read native skill resources and their exact version.', access: { kinds: ['read', 'browse'], result: 'resources' } }], actions: [...base.manifest.management?.operations?.actions ?? [], { id: 'skills-validate', description: 'Run the reviewed validation command against a candidate bundle.', requiresApproval: true, operation: { effects: ['execute'], execution: 'immediate' } }, { id: 'skills-publish', description: 'Publish a validated candidate as an enabled native skill version.', requiresApproval: true, operation: { effects: ['publish'], execution: 'immediate' } }, { id: 'skills-feedback', description: 'Attach human feedback to one exact skill version.', requiresApproval: true, operation: { effects: ['feedback'], execution: 'immediate' } }] } }, routes: [...(base.manifest.routes ?? []).map(route => ({ ...route, inputSchema: { ...(route.inputSchema as object), properties: { ...((route.inputSchema as { properties: object }).properties), ...libraryFields } } })), ...skillRoutes], actions: [...base.manifest.actions ?? [], ...promptActions, ...skillActions] }, create(context) {
     const runtime = base.create(context), store = new RecordStore(sourceRecordDirectory('playbooks', context, config))
     integration.attach?.(store)
     const stop = integration.ctx ? installAgentHooks(integration.ctx, { async beforeStep(input) {

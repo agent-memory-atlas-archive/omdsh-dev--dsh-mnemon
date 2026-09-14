@@ -34,4 +34,7 @@ Use the existing Source and Strategy implementations to make structured context 
 ## Progress
 
 - Current main integrated; release metadata and shared settings layout reconciled. Root TypeScript baseline passes.
-- Contract and migration work in progress.
+- Core now validates access semantics, operation effects, resource references, continuation routes, execution receipts and late-bound policy decisions.
+- Public Source and Client SDKs own reusable mechanics; all official Sources consume these contracts, while the general Workspace Strategy contains no product-role allowlist. Enhancements retain domain rules.
+- Focused contract and UI tests pass; integrated and all 38 plugin TypeScript checks pass. A release simulation advances Core and dependent peer ranges to 0.6.0.
+- Main WebUI acceptance is in progress. It exposed and corrected verbose interface presentation and an overly broad journal decision. Full regression and packed consumer verification remain required before completion.

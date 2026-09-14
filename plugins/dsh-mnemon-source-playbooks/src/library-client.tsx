@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react'
 import type { MemorySourcePageProps } from 'dsh-mnemon/client'
-import type { RecordValue } from 'dsh-mnemon-workspace-kit'
+import type { RecordValue } from 'dsh-mnemon/source-sdk'
 import { filterLibrary } from './library.ts'
 
 export function LibraryViews({ props, records, renderRecord }: { props: MemorySourcePageProps; records: RecordValue[]; renderRecord(record: RecordValue): ReactNode }) {

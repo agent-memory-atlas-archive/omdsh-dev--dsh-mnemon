@@ -1,8 +1,8 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import type { RecordSourceOptions } from 'dsh-mnemon-workspace-kit'
+import type { RecordSourceOptions } from 'dsh-mnemon/source-sdk'
 const execute = promisify(execFile)
-export const sourceOptions: RecordSourceOptions = {
+export const sourceOptions: RecordSourceOptions = { context: {"mode":"routed","weight":1} satisfies import('dsh-mnemon/contracts').MemoryContextProfile,
   transfer: true,
   typeId: 'journal', role: 'activity-log', label: 'Activity journal', description: 'Project and daily activity with timestamps, feedback and branch provenance.',
   kinds: ['progress', 'feedback', 'result'], scopes: ['project', 'daily'], defaultScope: 'project', modelWrites: 'append',
