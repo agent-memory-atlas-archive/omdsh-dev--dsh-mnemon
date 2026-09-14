@@ -5,7 +5,7 @@ import { afterEach, expect, it } from 'vitest'
 import { MemoryFileEditor } from '../src/client/plugin-files.tsx'
 
 afterEach(cleanup)
-const originals = [{ path: 'SKILL.md', content: '# Read the report' }, { path: 'scripts/check.mjs', content: 'original script' }, { path: 'references/old.md', content: 'old note' }]
+const originals = [{ path: 'SKILL.md', content: '---\nname: report-review\ndescription: Review the report.\n---\n# Read the report' }, { path: 'scripts/check.mjs', content: 'original script' }, { path: 'references/old.md', content: 'old note' }]
 it('compares edits without losing resource content when navigating or previewing', () => {
   function Editor() {
     const [files, setFiles] = useState(originals.slice(0, 2))
@@ -22,6 +22,9 @@ it('compares edits without losing resource content when navigating or previewing
   fireEvent.click(screen.getByRole('button', { name: 'SKILL.md' }))
   fireEvent.click(screen.getByRole('button', { name: 'Preview' }))
   expect(screen.getByRole('heading', { name: 'Read the report' })).toBeTruthy()
+  expect(screen.getByText('Document metadata')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Show text' }))
+  expect((screen.getByRole('textbox', { name: 'Resource content' }) as HTMLTextAreaElement).value).toBe(originals[0]!.content)
   fireEvent.click(screen.getByRole('button', { name: /scripts\/check.mjs/ }))
   expect((screen.getByRole('textbox', { name: 'Resource content' }) as HTMLTextAreaElement).value).toBe('reviewed script')
 })

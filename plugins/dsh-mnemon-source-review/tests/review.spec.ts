@@ -45,10 +45,10 @@ describe('independent conversation review', () => {
     try {
       await countReviewRound(engine.store, scope, 1, 1)
       await engine.store.change(undefined, records=>{ records.push(newRecord('constraint','Global rule','Be precise','global',scope),newRecord('constraint','Other project','DO NOT LEAK','project',{...scope,workspaceId:'/other'})) })
-      await engine.queue(scope); await until(async()=> (await engine.store.read()).records.some(record=>record.kind==='review'))
+      await engine.queue(scope); await until(async()=> delivered.length === 1 && (await engine.store.read()).records.some(record=>record.kind==='review'))
       expect(requests[0]?.prompt).toContain('Visible question'); expect(requests[0]?.prompt).toContain('Be precise'); expect(requests[0]?.prompt).not.toContain('DO NOT LEAK')
       expect(delivered[0]).toContain('Conversation reviewer · concern')
-      await engine.queue(scope,'What evidence is missing?'); await until(async()=> (await engine.store.read()).records.filter(record=>record.kind==='review').length===2)
+      await engine.queue(scope,'What evidence is missing?'); await until(async()=> delivered.length === 2 && (await engine.store.read()).records.filter(record=>record.kind==='review').length===2)
       expect(requests[1]?.reviewerId).toBe(requests[0]?.reviewerId); expect(requests[1]?.history).toHaveLength(1)
       await engine.reset(scope); expect((await engine.store.read()).records[0]?.data.reviewerId).not.toBe(requests[0]?.reviewerId)
       expect((await engine.store.read()).records.filter(record=>record.kind==='review')).toHaveLength(2)
