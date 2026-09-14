@@ -201,7 +201,7 @@ export function withSkillLifecycle(runtime: MemorySourceRuntime, context: Memory
       }
       const input = memoryInputRecord(request.input ?? {}, 'skill management'), scope = request.scope
       if (request.mode === 'read') {
-        if (request.operation === 'skills-catalog') { if (!catalog) throw new Error('Native skill catalog unavailable'); return managedResult({ revision: '', value: json({ skills: await catalog.list(scope, request.signal), roots: await catalog.roots(request.signal) }) }, scope, request.operation, request.signal) }
+        if (request.operation === 'skills-catalog') { if (!catalog) throw new Error('Native skill catalog unavailable'); return managedResult({ revision: '', value: json({ skills: await catalog.list(scope, request.signal), roots: await catalog.roots(request.signal), configuredRoots: await catalog.configuredDirectories() }) }, scope, request.operation, request.signal) }
         if (request.operation === 'skills-native-read') { if (!catalog) throw new Error('Native skill catalog unavailable'); return managedResult({ revision: '', value: json(await catalog.read(scope, String(input.name ?? ''), request.signal)) }, scope, request.operation, request.signal) }
         if (request.operation !== 'skills-snapshot') throw new Error('Unsupported skill read')
         await engine.recover(request.signal)

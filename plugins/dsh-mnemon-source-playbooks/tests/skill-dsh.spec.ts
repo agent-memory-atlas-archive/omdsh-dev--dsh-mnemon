@@ -23,6 +23,9 @@ it('uses the actual native foreground outcome and preserves the current agent sc
     expect((await ports.validate!(scope, '/private/check-copy', check, signal)).status).toBe(status)
   }
   expect(execute).toHaveBeenLastCalledWith(expect.objectContaining({ name: 'bash', agent, signal, arguments: expect.objectContaining({ workdir: '/private/check-copy', command: check.command }) }))
+  const cancelled = new AbortController()
+  execute.mockImplementation(async () => { cancelled.abort(); return { isError: true, content: [{ type: 'text', text: 'Cancelled' }] } })
+  expect(await ports.validate!(scope, '/private/check-copy', check, cancelled.signal)).toMatchObject({ status: 'cancelled', exitCode: null })
 })
 it('requires the nested bash result through the native PTC transport and removes its listener', async () => {
   const stop = vi.fn(), agent = { options: {} }, adapter = { live: async () => agent } as unknown as DshWorkspaceAdapter

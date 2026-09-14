@@ -83,7 +83,7 @@ export class SkillStore {
       selected = versionRecord(records, scope, id, version)
       if (selected.state !== 'pending') throw new Error('Published skills are immutable; create a reviewed revision')
       if (records.some(record => record.kind === 'skill-run' && record.data.skillId === id && record.data.status === 'running')) throw new Error('Wait for validation or cancel it before editing')
-      if (selected.data.baseId && skillBundle(selected).name !== bundle.name) throw new Error('A revision must retain the skill name')
+      if ((selected.data.baseId || selected.data.nativeOriginId) && skillBundle(selected).name !== bundle.name) throw new Error('A revision must retain the skill name')
       reviseRecord(selected, 'edit-candidate')
       selected.title = memoryInputText(title, 'skill title', 300)!
       selected.content = bundle.files.find(file => file.path === 'SKILL.md')!.content

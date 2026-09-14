@@ -9,7 +9,8 @@ import { skillAuthoringContract, type SkillPorts } from './skill-engine.ts'
 import { skillBundle, type SkillStore, type SkillValidationResult } from './skill-store.ts'
 import { redactSkillText } from './skill-bundle.ts'
 
-function executionOutcome(result: ToolExecutionResult, label: string, command: string, toolCallId: string): SkillValidationResult {
+function executionOutcome(result: ToolExecutionResult, label: string, command: string, toolCallId: string, signal?: AbortSignal): SkillValidationResult {
+  if (signal?.aborted) return { label, command, toolCallId, status: 'cancelled', exitCode: null, output: 'Command cancelled before validation completed' }
   if (result.isError) return { label, command, toolCallId, status: 'blocked', exitCode: null, output: result.content.flatMap(block => block.type === 'text' ? [block.text] : []).join('\n') }
   const value = result.value as { kind?: string; exitCode?: number | null; timedOut?: boolean; aborted?: boolean; stdout?: { text?: string }; stderr?: { text?: string }; sandbox?: { runnerFailed?: boolean; denied?: boolean } }
   if (!value || value.kind !== 'foreground' || typeof value.exitCode !== 'number' && value.exitCode !== null) return { label, command, toolCallId, status: 'failed', exitCode: null, output: 'DSH did not return a completed foreground command result' }
@@ -37,7 +38,7 @@ export function nativeSkillPorts(ctx: Context, adapter: DshWorkspaceAdapter): Sk
       const agent = await adapter.live(scope.sessionId!, scope, signal), callId = ('mnemon-skill-check:' + randomUUID()) as ToolCallId
       const args = { command: check.command, workdir: directory, description: 'Validate reviewed skill: ' + check.label, timeoutMs: 30000 }
       const schemas = ctx.tools.schemas(agent)
-      if (schemas.some(schema => schema.name === 'bash')) return executionOutcome(await ctx.tools.execute({ name: 'bash', arguments: args, agent, callId, signal }), check.label, check.command, callId)
+      if (schemas.some(schema => schema.name === 'bash')) return executionOutcome(await ctx.tools.execute({ name: 'bash', arguments: args, agent, callId, signal }), check.label, check.command, callId, signal)
       if (!schemas.some(schema => schema.name === 'run_code') || !ctx.tools.get('bash', agent)) throw new Error('The current DSH preset does not expose its native bash tool')
       const runtime = ctx.get('codeRuntime') as { language?: string } | undefined
       if (runtime?.language !== 'typescript') throw new Error('This validation adapter requires the DSH TypeScript tool transport')
@@ -45,7 +46,7 @@ export function nativeSkillPorts(ctx: Context, adapter: DshWorkspaceAdapter): Sk
       const stop = ctx.on('tools/result', (exec, result) => { if (exec.rootCallId === callId && exec.name === 'bash') nested = result })
       try {
         const outer = await ctx.tools.execute({ name: 'run_code', arguments: { code: 'const result = await tools.bash(' + JSON.stringify(args) + '); console.log(JSON.stringify(result));', description: 'Validate reviewed skill: ' + check.label }, agent, callId, signal })
-        return executionOutcome(outer.isError ? outer : nested ?? outer, check.label, check.command, callId)
+        return executionOutcome(outer.isError ? outer : nested ?? outer, check.label, check.command, callId, signal)
       } finally { stop() }
     },
   }

@@ -62,7 +62,9 @@ export class SkillEngine {
         const original = request.base ?? (request.native ? newRecord('skill-origin', request.basis.title, '', request.basis.scope, scope, { bundle: json(request.native) }) : undefined)
         const raw = await this.ports.generate!(scope, request.basis, original, request.instruction, signal)
         signal.throwIfAborted()
-        const value = JSON.parse(raw.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '')) as { title: string; reason: string; bundle: unknown }
+        let value: { title: string; reason: string; bundle: unknown }
+        try { value = JSON.parse(raw.trim().replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '')) as typeof value }
+        catch { throw new Error('The model returned invalid skill JSON. Retry generation; no candidate was saved.') }
         candidate = await this.skills.propose(scope, { title: value.title, bundle: parseSkillBundle(value.bundle), reason: value.reason, basis: request.basis, ...(request.base ? { baseId: request.base.id } : {}), ...(request.native ? { nativeOriginal: request.native } : {}), ...(request.reviewedFeedback ? { reviewedFeedback: request.reviewedFeedback } : {}) }, undefined, signal)
       } else {
         const bundle = skillBundle(request.skill)
@@ -81,7 +83,6 @@ export class SkillEngine {
           if (!skill || skill.state !== 'pending' || skill.data.contentDigest !== request.skill.data.contentDigest) throw new Error('The candidate changed during validation; results cannot approve another version')
           reviseRecord(skill, 'validated'); skill.data.validation = { runId: run.id, digest: skill.data.contentDigest!, status: passed ? 'passed' : 'failed', at: new Date().toISOString() }
         }, signal)
-        this.ports.activity?.({ eventKey: run.id, scope, kind: 'skill-validated', title: request.skill.title, summary: results.map(result => `${result.label}: ${result.status}; exit=${result.exitCode}\n${result.output}`).join('\n').slice(0, 6000), level: passed ? 'info' : 'warning', recordId: request.skill.id, artifactId: request.skill.id, artifactDigest: String(request.skill.data.contentDigest), status: passed ? 'passed' : 'failed', verifiedByHuman: false })
       }
       signal.throwIfAborted()
       await this.skills.store.change(undefined, records => {
@@ -90,13 +91,19 @@ export class SkillEngine {
         if (candidate) current.data.candidateId = candidate.id
         if (results.length) current.data.results = json(results)
       })
+      if (request.kind === 'validate') this.reportValidation(scope, run.id, request.skill, results, results.length === skillBundle(request.skill).checks.length && results.every(result => result.status === 'passed' && result.exitCode === 0) ? 'passed' : 'failed')
     } catch (error) {
       await this.skills.store.change(undefined, records => {
         const current = records.find(record => record.id === run.id)
         if (!current) return
         reviseRecord(current, 'run-failed'); current.data.status = lifetime.aborted ? 'cancelled' : 'failed'; current.data.error = redactSkillText(String(error)).slice(0, 2000); current.data.completedAt = new Date().toISOString(); current.data.results = json(results)
       }).catch(() => { /* The durable claim expires and can be recovered on the next read. */ })
+      if (request.kind === 'validate') this.reportValidation(scope, run.id, request.skill, results, lifetime.aborted ? 'cancelled' : 'failed', String(error))
     }
+  }
+
+  private reportValidation(scope: MemoryOperationScope, eventKey: string, skill: RecordValue, results: SkillValidationResult[], status: string, error = ''): void {
+    this.ports.activity?.({ eventKey, scope, kind: 'skill-validated', title: skill.title, summary: redactSkillText([results.map(result => `${result.label}: ${result.status}; exit=${result.exitCode}\n${result.output}`).join('\n'), error].filter(Boolean).join('\n')).slice(0, 6000), level: status === 'passed' ? 'info' : 'warning', recordId: skill.id, artifactId: skill.id, artifactDigest: String(skill.data.contentDigest), status, verifiedByHuman: false })
   }
 
   async cancel(id: string, scope: MemoryOperationScope): Promise<void> {

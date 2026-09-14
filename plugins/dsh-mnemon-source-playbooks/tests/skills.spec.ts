@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { bundleDigest, inspectSkillBundle, materializeSkillBundle, parseSkillBundle, verifySkillFiles, type SkillBundle } from '../src/skill-bundle.ts'
 import { SkillStore, type SkillBasis } from '../src/skill-store.ts'
 import { SkillEngine } from '../src/skill-engine.ts'
@@ -90,10 +90,12 @@ describe('review, validation, native publication and feedback', () => {
     expect((await skills.snapshot(scope)).records.find(record => record.id === candidate.id)?.data.validation).toBeUndefined()
     expect((await skills.snapshot(scope)).records.find(record => record.kind === 'skill-run')?.data).toMatchObject({ status: 'failed', error: expect.stringContaining('changed outside') })
     await engine.dispose()
-    const wait = new SkillEngine(skills, { validate: async (_scope, _directory, _check, signal) => new Promise((_resolve, reject) => { signal.addEventListener('abort', () => reject(signal.reason), { once: true }) }) })
+    const activity = vi.fn()
+    const wait = new SkillEngine(skills, { activity, validate: async (_scope, _directory, _check, signal) => new Promise((_resolve, reject) => { signal.addEventListener('abort', () => reject(signal.reason), { once: true }) }) })
     const run = await wait.queue(scope, { kind: 'validate', skill: candidate }, (await skills.store.read()).revision)
     await wait.cancel(run.id, scope)
     expect((await skills.snapshot(scope)).records.find(record => record.id === run.id)?.data.status).toBe('cancelled')
+    expect(activity).toHaveBeenCalledWith(expect.objectContaining({ kind: 'skill-validated', artifactId: candidate.id, artifactDigest: candidate.data.contentDigest, status: 'cancelled', level: 'warning', verifiedByHuman: false }))
     await wait.dispose()
   })
   it('bounds duplicate candidates and leaves generation failures reviewable', async () => {
@@ -104,5 +106,20 @@ describe('review, validation, native publication and feedback', () => {
     expect((await skills.snapshot(scope)).records.filter(record => record.kind === 'skill-version')).toHaveLength(1)
     await expect(skills.propose(scope, { title: 'Conflicting draft', reason: 'Different code', bundle: bundle('console.log(9)'), basis })).rejects.toThrow('pending candidate')
     await engine.dispose()
+  })
+  it('rejects malformed model output without saving partial candidates or touching the native original', async () => {
+    const skills = await fixture(), original = bundle(), engine = new SkillEngine(skills, { async generate() { return JSON.stringify({ title: 'Revision', reason: 'Review native skill', bundle: original }) + ' trailing text' } })
+    await engine.queue(scope, { kind: 'generate', basis, native: original, instruction: 'Refine the native instructions' }, (await skills.store.read()).revision)
+    await engine.idle()
+    const state = await skills.snapshot(scope)
+    expect(state.records.filter(record => record.kind === 'skill-version' || record.kind === 'skill-origin')).toEqual([])
+    expect(state.records.find(record => record.kind === 'skill-run')?.data).toMatchObject({ status: 'failed', error: expect.stringContaining('no candidate was saved') })
+    await engine.dispose()
+  })
+  it('retains the original native name when editing a reviewed import', async () => {
+    const skills = await fixture(), original = bundle()
+    const candidate = await skills.propose(scope, { title: 'Native revision', reason: 'Preserve existing skill identity', bundle: original, basis, nativeOriginal: original })
+    const renamed = { ...original, name: 'renamed-skill', files: original.files.map(file => ({ ...file, content: file.content.replace('name: numeric-summary', 'name: renamed-skill') })) }
+    await expect(skills.update(scope, candidate.id, candidate.version, renamed, candidate.title, (await skills.store.read()).revision)).rejects.toThrow('retain the skill name')
   })
 })

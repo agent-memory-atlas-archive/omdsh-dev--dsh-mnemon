@@ -237,7 +237,7 @@ describe('Source Client presentation conformance', () => {
       if (endpoint === 'source-management-mutate') return { ok: true, value: { revision: 'write-r2', value: { updated: true } } }
       return { ok: false, error: { code: 'bad-request', message: `unexpected ${endpoint}`, details: { issues: [] } } }
     }) } }
-    const directorySnapshot = [{ id: 'git/repository', sourceTypeId: 'git', pageId: 'repository', label: 'Repository', coordinateSources, order: 1 }] as const
+    const directorySnapshot = [{ id: 'git/repository', sourceTypeId: 'git', pageId: 'repository', label: 'Repository', coordinateSources, order: 1 }, { id: 'git/changes', sourceTypeId: 'git', pageId: 'changes', label: 'Changes', coordinateSources, order: 2 }] as const
     const directory = {
       getSnapshot: () => directorySnapshot,
       subscribe: () => () => {},
@@ -267,6 +267,8 @@ describe('Source Client presentation conformance', () => {
     />)
 
     fireEvent.click(await screen.findByRole('tab', { name: 'Repository' }))
+    expect(screen.getByRole('tab', { name: 'Repository' }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('tab', { name: 'Changes' }).getAttribute('aria-selected')).toBe('false')
     expect((await screen.findByTestId('selected-source')).textContent).toBe('source:git-work')
     expect(lastProps).toMatchObject({
       sourceTypeId: 'git', sourceInstanceKey: 'source:git-work', sessionId: 'session-1', workspaceId: 'workspace-1', locale: 'en-US',

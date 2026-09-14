@@ -3,7 +3,7 @@ import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SkillViewOptions } from '@deepseek-ai/dsh-skill'
 import type { MemoryOperationScope } from 'dsh-mnemon/contracts'
 import { allowedDirectories, digest, json, newRecord, reviseRecord } from 'dsh-mnemon-workspace-kit'
-import { dirname, join, resolve, sep } from 'node:path'
+import { basename, dirname, join, sep } from 'node:path'
 import { readFile, lstat, realpath } from 'node:fs/promises'
 import { parseDocument } from 'yaml'
 import type { DshWorkspaceAdapter } from 'dsh-mnemon-workspace-kit/dsh'
@@ -30,10 +30,11 @@ export class SkillCatalog {
     const snapshot = await this.skills.store.read(signal), settings = snapshot.records.find(record => record.kind === 'skill-directories')
     return allowedDirectories([...this.configuredRoots, ...(Array.isArray(settings?.data.roots) ? settings.data.roots.filter((value): value is string => typeof value === 'string') : [])])
   }
+  configuredDirectories(): Promise<string[]> { return allowedDirectories(this.configuredRoots) }
   async updateRoot(path: string, remove: boolean, expected: string, signal?: AbortSignal): Promise<void> {
     const canonical = (await allowedDirectories([path]))[0]
     if (!canonical) throw new Error('Choose an existing readable skill directory')
-    if (this.configuredRoots.map(root => resolve(root)).includes(canonical)) throw new Error('This directory is configured by the plugin; edit its plugin configuration to remove it')
+    if ((await this.configuredDirectories()).includes(canonical)) throw new Error('This directory is configured by the plugin; edit its plugin configuration to remove it')
     const current = await this.roots(signal)
     if (!remove && current.some(root => canonical === root || canonical.startsWith(root + sep) || root.startsWith(canonical + sep))) throw new Error('Skill directories must not overlap or repeat')
     await this.skills.store.change(expected, records => {
@@ -53,7 +54,8 @@ export class SkillCatalog {
   async read(scope: MemoryOperationScope, name: string, signal?: AbortSignal) {
     const skill = await this.ctx.skills.get(name, await this.lookup(scope, signal))
     if (!skill) throw new Error('The skill is not present in this session and workspace')
-    const directory = skill.resourceBase?.kind === 'directory' ? skill.resourceBase.path : skill.path ? dirname(skill.path) : undefined
+    // A standalone Markdown file does not grant access to all of its siblings.
+    const directory = skill.resourceBase?.kind === 'directory' ? skill.resourceBase.path : skill.path && basename(skill.path) === 'SKILL.md' ? dirname(skill.path) : undefined
     const files = directory ? await readSkillBundleDirectory(directory, signal) : []
     return { name: skill.name, description: skill.description, content: skill.content, provider: skill.provider, source: skill.source, enabled: skill.invocation.modelInvocable, directory: directory ?? null, files,
       editable: !!directory && !directory.startsWith(this.skills.resourceRoot + sep) && ['custom', 'user-dsh', 'user-agents'].includes(skill.source), digest: digest([skill.name, skill.description, files.length ? files : skill.content]) }
