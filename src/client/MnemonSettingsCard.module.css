@@ -641,10 +641,6 @@
   .miniSpinner { animation: none; }
 }
 
-.storageChoiceGrid > :last-child { grid-column: 1 / -1; }
-.workspaceStorageLocation { margin-top: 16px; }
-.workspaceStorageLocation > p { margin: 10px 0 0; color: var(--dsw-alias-label-caption); font-size: 12px; line-height: 1.5; }
-
 @container (max-width: 480px) {
   .page > .preferenceRow { flex-direction: column; align-items: stretch; gap: 12px; }
   .preferenceRow .choiceGrid { align-self: flex-start; max-width: 100%; flex-wrap: wrap; }
@@ -679,3 +675,8 @@
 .fullSettingsContent { min-height: 0; overflow-y: auto; padding: 0 24px 20px; }
 .fullSettingsBody { min-width: 0; outline: none; }
 .fullSettingsBody .pageHeader { display: none; }
+
+.storageChoiceGrid > :last-child { grid-column: 1 / -1; }
+.preferenceRow:has(.workspaceStorageLocation) { flex-wrap: wrap; }
+.workspaceStorageLocation { min-width: 0; flex-basis: 100%; }
+.workspaceStorageLocation > p { margin: 10px 0 0; color: var(--dsw-alias-label-caption); font-size: 12px; line-height: 1.5; }
