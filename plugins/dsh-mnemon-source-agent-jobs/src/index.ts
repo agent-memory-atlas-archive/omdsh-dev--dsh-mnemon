@@ -54,7 +54,16 @@ export function createAgentJobsSource(config: Config = {}, integration: Integrat
     },
   }, config)
   const manifest = { ...base.manifest, capabilities: base.manifest.capabilities.filter(capability => capability !== 'import'), actions: [...base.manifest.actions ?? [], { operation: {"effects":["execute"],"execution":"deferred","requiresReadGrant":true} satisfies import('dsh-mnemon/contracts').MemoryOperationSemantics, id: 'run-job', description: 'Start an approved draft using the exact displayed execution plan. The plan includes command, argv, workspace, prompt and attachments.', capability: 'write' as const, authority: 'process-execution', inputSchema: planSchema }] }
-  return { manifest: { ...manifest, consistency: 'namespace-pinned-live-read', routes: [
+  return { manifest: { ...manifest, management: { ...base.manifest.management!, operations: {
+    reads: [...base.manifest.management!.operations!.reads,
+      { id: 'execution-plan', description: 'Inspect the exact command, inputs, workspace and version before starting a job.', access: { kinds: ['read'], result: 'records' } },
+      { id: 'lookup-job-log', description: 'Observe the persisted execution log and outcome.', access: { kinds: ['observe'], result: 'execution' } },
+    ],
+    actions: [...base.manifest.management!.operations!.actions,
+      { id: 'start-job', description: 'Start the reviewed plan and track its execution identity through completion.', requiresApproval: true, operation: { effects: ['execute'], execution: 'deferred' } },
+      { id: 'stop-job', description: 'Cancel this owned job and retain its outcome.', requiresApproval: true, operation: { effects: ['coordinate'], execution: 'immediate' } },
+    ],
+  } }, consistency: 'namespace-pinned-live-read', routes: [
     { access: {"kinds":["read"],"result":"records"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'job-plan', description: 'Preview an approved job as a concrete JSON execution plan; oversized plans require the management page.', capability: 'recall', inputSchema: idSchema, maxCalls: 4, maxResults: 1, maxCharacters: 12_000 },
     { access: {"kinds":["observe"],"result":"text"} satisfies import('dsh-mnemon/contracts').MemoryAccessSemantics, id: 'job-log', description: 'Read the recent log output for one project job.', capability: 'recall', inputSchema: idSchema, maxCalls: 8, maxResults: 1, maxCharacters: 12_000 }, ...base.manifest.routes ?? [],
   ] }, create(context) {

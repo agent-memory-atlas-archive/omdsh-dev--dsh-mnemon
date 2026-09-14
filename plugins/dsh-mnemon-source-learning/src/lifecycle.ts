@@ -1,3 +1,4 @@
+import type {} from 'dsh-mnemon-workspace-kit'
 import type {} from '@deepseek-ai/dsh-command-feedback'
 import type { Context } from '@deepseek-ai/cordis'
 import { agentMemoryScope, installAgentHooks, visibleMessages } from 'dsh-mnemon-workspace-kit/dsh'
@@ -46,4 +47,3 @@ export function installLearningCapture(ctx: Context, learning: LearningStore, so
   })
   return async () => { stopOperations(); stopActivity(); abort.abort(); await stopHooks(); await Promise.allSettled([...pending]) }
 }
-import type {} from 'dsh-mnemon-workspace-kit'
