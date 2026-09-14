@@ -179,7 +179,8 @@
     "dsh-mnemon-source-sync": "0.1.0",
     "dsh-mnemon-source-learning": "0.1.0",
     "dsh-mnemon-strategy-learning-cycle": "0.1.0",
-    "semver": "^7.8.5"
+    "semver": "^7.8.5",
+    "dsh-mnemon-strategy-skill-refinement": "0.1.0"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",

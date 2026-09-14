@@ -14,15 +14,21 @@ import { allowedDirectories, createRecordSource, digest, json, RecordStore, revi
 import { agentMemoryScope, DshWorkspaceAdapter, installAgentHooks } from 'dsh-mnemon-workspace-kit/dsh'
 import { sourceOptions } from './source.ts'
 import { advanceSchedules, makeSchedule, renderPrompt } from './schedule.ts'
+import { skillActions, skillRoutes, withSkillLifecycle, type SkillIntegration } from './skill-source.ts'
+import { skillBundle, type SkillStore } from './skill-store.ts'
+import type { SkillCatalog } from './skill-catalog.ts'
+import { verifySkillFiles } from './skill-bundle.ts'
+import { nativeSkillPorts } from './skill-dsh.ts'
+import { join } from 'node:path'
 export const name = 'dsh-mnemon-source-playbooks'
-export const inject = ['mnemonMemory', 'agentPresets', 'agents', 'sessionQuery', 'workspaceRegistry', 'skills']
+export const inject = ['mnemonMemory', 'agentPresets', 'agents', 'sessionQuery', 'workspaceRegistry', 'skills', 'llm', 'tools']
 export interface Config extends RecordSourceConfig { providerName?: string; skillDirectories?: string[] }
 export const Config = z.object({ dataDir: z.string(), providerName: z.string().default('workspace-playbooks'), skillDirectories: z.array(z.string()).default([]) }) as z<Config>
-export const memoryPlugin = defineMemoryPlugin({ packageName: name, label: { en: 'Playbooks', 'zh-CN': '工作方法' }, description: { en: 'Reviewed skills, reusable prompts and explicit session schedules.', 'zh-CN': '经过审核的技能、可复用提示词与显式会话调度。' }, roles: ['source'], provides: [{ id: 'source' }, { id: 'source.instruction-library' }] })
-interface Integration { ctx?: Context; attach?(store: RecordStore): void; changed?(): void; adapter?: DshWorkspaceAdapter }
+export const memoryPlugin = defineMemoryPlugin({ packageName: name, label: { en: 'Playbooks', 'zh-CN': '工作方法' }, description: { en: 'Reviewed native skills, reusable prompts and explicit session schedules.', 'zh-CN': '原生技能的生成、审核与发布，可复用提示词及会话调度。' }, roles: ['source'], provides: [{ id: 'source' }, { id: 'source.instruction-library' }, { id: 'source.skill-lifecycle' }] })
+interface Integration extends SkillIntegration { attach?(store: RecordStore): void }
 export function createPlaybooksSource(config: Config = {}, integration: Integration = {}): MemorySourceDefinition {
   const base = createRecordSource(sourceOptions, config)
-  return { ...base, manifest: { ...base.manifest, routes: (base.manifest.routes ?? []).map(route => ({ ...route, inputSchema: { ...(route.inputSchema as object), properties: { ...((route.inputSchema as { properties: object }).properties), ...libraryFields } } })), actions: [...base.manifest.actions ?? [], ...promptActions] }, create(context) {
+  return { ...base, manifest: { ...base.manifest, routes: [...(base.manifest.routes ?? []).map(route => ({ ...route, inputSchema: { ...(route.inputSchema as object), properties: { ...((route.inputSchema as { properties: object }).properties), ...libraryFields } } })), ...skillRoutes], actions: [...base.manifest.actions ?? [], ...promptActions, ...skillActions] }, create(context) {
     const runtime = base.create(context), store = new RecordStore(sourceRecordDirectory('playbooks', context, config))
     integration.attach?.(store)
     const stop = integration.ctx ? installAgentHooks(integration.ctx, { async beforeStep(input) {
@@ -112,30 +118,45 @@ export function createPlaybooksSource(config: Config = {}, integration: Integrat
       },
       async dispose() { await stop?.(); await runtime.dispose?.() },
     }
-    return enhanced
+    return withSkillLifecycle(enhanced, context, store, config, integration)
   } }
 }
 export function apply(ctx: Context, config: Config = {}): void {
-  let store: RecordStore | undefined, invalidate: (() => void) | undefined
+  let store: RecordStore | undefined, invalidate: (() => void) | undefined, skills: SkillStore | undefined, catalog: SkillCatalog | undefined
   const providerName = config.providerName ?? 'workspace-playbooks'
   ctx.skills.registerProvider(control => {
-    let files: Promise<FileSystemSkillProvider> | undefined
-    const fileProvider = () => files ??= allowedDirectories(config.skillDirectories ?? []).then(roots => { control.signal.throwIfAborted(); return new FileSystemSkillProvider(ctx, control, { providerName, includeDefaultRoots: false, customSkillDirs: roots, watch: false }) })
+    let files: Promise<FileSystemSkillProvider> | undefined, rootsDigest = ''
+    const fileProvider = async () => {
+      const roots = catalog ? await catalog.roots(control.signal) : await allowedDirectories(config.skillDirectories ?? []), nextDigest = digest(roots)
+      if (!files || rootsDigest !== nextDigest) { const previous = files; rootsDigest = nextDigest; files = (async () => { await (await previous)?.dispose(); control.signal.throwIfAborted(); return new FileSystemSkillProvider(ctx, control, { providerName, includeDefaultRoots: false, customSkillDirs: roots, watch: false }) })() }
+      return files
+    }
     ctx.effect(() => async () => { await (await files)?.dispose() }, 'dispose playbook file provider')
     invalidate = control.invalidate
     const list = async (cwd?: string, signal?: AbortSignal) => (await store?.read(signal))?.records.filter(record => record.kind === 'skill' && record.state === 'active' && record.data.enabled === true && visibleRecord(record, { storage: 'custom', ...(cwd ? { workspaceId: cwd } : {}) })) ?? []
     return { name: providerName, async list(options) {
       const observed = await (await fileProvider()).list({ ...options, signal: options.signal ? AbortSignal.any([options.signal, control.signal]) : control.signal })
       const fileCandidates = Array.isArray(observed) ? observed : observed.candidates
-      const records = (await list(options.cwd, options.signal)).map(record => ({ name: String(record.data.slug), description: String(record.data.summary || record.title).slice(0, 1000), invocation: { modelInvocable: true, userInvocable: true }, source: 'custom', provider: providerName, rank: 250, locator: { recordId: record.id, version: record.version }, resourceBase: { kind: 'opaque', description: 'Approved playbook ' + record.id } } satisfies SkillCandidate))
-      return { candidates: [...records, ...fileCandidates], complete: (config.skillDirectories ?? []).length === 0 }
+      const published = (await skills?.snapshot({ storage: 'custom', ...(options.cwd ? { workspaceId: options.cwd } : {}) }, options.signal))?.records.filter(record => record.kind === 'skill-version' && record.data.directory) ?? []
+      const versions = published.filter(record => record.state === 'active').map(record => ({ name: skillBundle(record).name, description: skillBundle(record).description, invocation: { modelInvocable: record.data.enabled !== false, userInvocable: record.data.enabled !== false }, source: 'custom', provider: providerName, rank: record.scope === 'project' ? 240 : 250, locator: { skillVersionId: record.id, digest: record.data.contentDigest }, resourceBase: { kind: 'directory', path: String(record.data.directory) }, path: join(String(record.data.directory), 'SKILL.md'), metadata: { release: record.data.release, digest: record.data.contentDigest } } satisfies SkillCandidate))
+      const names = new Set(published.map(record => skillBundle(record).name))
+      const records = (await list(options.cwd, options.signal)).filter(record => !names.has(String(record.data.slug))).map(record => ({ name: String(record.data.slug), description: String(record.data.summary || record.title).slice(0, 1000), invocation: { modelInvocable: true, userInvocable: true }, source: 'custom', provider: providerName, rank: 250, locator: { recordId: record.id, version: record.version }, resourceBase: { kind: 'opaque', description: 'Approved playbook ' + record.id } } satisfies SkillCandidate))
+      return { candidates: [...versions, ...records, ...fileCandidates.filter(candidate => !names.has(candidate.name))], complete: false }
     }, async get(candidate, options) {
-      const locator = candidate.locator as { recordId?: string; version?: number }
+      const locator = candidate.locator as { recordId?: string; version?: number; skillVersionId?: string; digest?: string }
+      if (locator.skillVersionId) {
+        const record = (await skills?.snapshot({ storage: 'custom', ...(options.cwd ? { workspaceId: options.cwd } : {}) }, options.signal))?.records.find(record => record.id === locator.skillVersionId && record.state === 'active' && record.data.contentDigest === locator.digest)
+        if (!record) return
+        const bundle = skillBundle(record)
+        await verifySkillFiles(String(record.data.directory), bundle, options.signal)
+        return { ...candidate, content: record.content.replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/, '') }
+      }
       if (!locator.recordId) return (await fileProvider()).get(candidate, options)
       const record = (await list(options.cwd, options.signal)).find(record => record.id === locator.recordId && record.version === locator.version)
       return record ? { ...candidate, content: record.content } : undefined
     } }
   })
-  installMemory(ctx, { plugin: memoryPlugin, sources: [createPlaybooksSource(config, { ctx, attach(value) { store = value; invalidate?.() }, changed() { invalidate?.() }, adapter: new DshWorkspaceAdapter({ agentPresets: ctx.agentPresets, sessionQuery: ctx.sessionQuery, agents: ctx.agents, workspaceRegistry: ctx.workspaceRegistry }) })] }, { effectiveDigest: memoryConfigurationDigest(config) })
+  const adapter = new DshWorkspaceAdapter({ agentPresets: ctx.agentPresets, sessionQuery: ctx.sessionQuery, agents: ctx.agents, workspaceRegistry: ctx.workspaceRegistry })
+  installMemory(ctx, { plugin: memoryPlugin, sources: [createPlaybooksSource(config, { ctx, attach(value) { store = value; invalidate?.() }, attachSkills(value, native) { skills = value; catalog = native; invalidate?.() }, changed() { invalidate?.() }, adapter, skillPorts: nativeSkillPorts(ctx, adapter) })] }, { effectiveDigest: memoryConfigurationDigest(config) })
 }
 export { sourceOptions }

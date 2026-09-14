@@ -18,3 +18,4 @@ export { IconChevronLeftOutline14 } from '@deepseek-ai/dsh-client-ui-primitives'
 
 export { memoryPluginTokens, memoryPluginStyles, MemoryPluginSurface, MemoryPluginMetrics, MemoryPluginNotice } from './plugin-ui.tsx'
 export { MemoryMarkdown, MemoryMarkdownEditor, type MemoryMarkdownEditorProps } from './plugin-editor.tsx'
+export { MemoryFileEditor, type MemoryFileEditorProps, type MemoryTextFile } from './plugin-files.tsx'

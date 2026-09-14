@@ -39,7 +39,8 @@
     "@deepseek-ai/dsh-workspace": "^0.1.2-rc.1 || ^0.1.5-rc.1",
     "@deepseek-ai/dsh-skill": "^0.1.2-rc.1 || ^0.1.5-rc.1",
     "@deepseek-ai/dsh-skill-filesystem": "^0.1.2-rc.1 || ^0.1.5-rc.1",
-    "@deepseek-ai/dsh-agent-presets": "^0.1.2-rc.1 || ^0.1.5-rc.1"
+    "@deepseek-ai/dsh-agent-presets": "^0.1.2-rc.1 || ^0.1.5-rc.1",
+    "@deepseek-ai/dsh-tools": "^0.1.2-rc.1 || ^0.1.5-rc.1"
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "^4.0.1",
@@ -106,7 +107,8 @@
   "dependencies": {
     "dsh-mnemon-workspace-kit": "0.1.0",
     "schemastery": "^3.18.0",
-    "proper-lockfile": "^4.1.2"
+    "proper-lockfile": "^4.1.2",
+    "yaml": "^2.9.0"
   },
   "dsh": {
     "client": {

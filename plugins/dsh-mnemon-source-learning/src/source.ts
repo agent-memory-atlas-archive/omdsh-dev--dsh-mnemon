@@ -27,6 +27,17 @@ export function createLearningSource(config: LearningConfig, port: LearningPort,
     owner.refs++
     const { learning, runner } = owner, snapshots = new Map<string, RecordSnapshot>(), prepared = new WeakMap<object, RecordSnapshot>(), inspected = new Map<string, import('./learning.ts').LearningWindow>()
     const stop = ctx ? installLearningCapture(ctx, learning, context.sourceInstanceKey, config) : undefined
+    const stopProcedures = ctx?.on('mnemon-workspace/procedures', async (scope, accept, signal) => {
+      try {
+      const snapshot = await learning.store.read(signal)
+      accept(snapshot.records.filter(record => record.kind === 'proposal' && record.data.category === 'procedure' && ['pending', 'active'].includes(record.state) && visibleRecord(record, scope)).slice(-20).map(record => ({
+        sourceInstanceKey: context.sourceInstanceKey, recordId: record.id, recordVersion: record.version,
+        scope: record.scope as 'global' | 'project', ...(record.workspaceId ? { workspaceId: record.workspaceId } : {}),
+        title: record.title, content: record.content, name: String(record.data.slug), state: record.state as 'pending' | 'active', signals: record.signals,
+        evidence: snapshot.records.filter(item => item.kind === 'observation' && visibleRecord(item, scope) && Array.isArray(record.data.evidenceIds) && record.data.evidenceIds.includes(item.id)).slice(-12).map(item => ({ id: item.id, origin: String(item.data.origin), content: item.content.slice(0, 2000), verifiedByHuman: ['human-turn', 'human-feedback'].includes(String(item.data.origin)) })),
+      })))
+      } catch (error) { signal?.throwIfAborted(); ctx?.logger('mnemon-learning').warn('Procedure discovery unavailable: %s', String(error)) }
+    })
     const pinned = (grant: MemoryJsonValue | undefined) => {
       const key = memoryInputText(memoryInputRecord(grant ?? {}, 'learning grant').snapshot, 'snapshot', 64)!
       const snapshot = snapshots.get(key)
@@ -104,7 +115,7 @@ export function createLearningSource(config: LearningConfig, port: LearningPort,
         const snapshot = request.operation === 'review-now' ? await runner.queue(request.scope, request.expectedRevision, request.signal) : await learning.change(request.scope, request.operation, input, request.expectedRevision, request.signal)
         return { revision: snapshot.revision, value: learningJson(snapshot, request.scope, config) }
       },
-      async dispose() { await stop?.(); snapshots.clear(); inspected.clear(); if (--owner!.refs === 0) { owners.delete(key); await runner.dispose() } },
+      async dispose() { stopProcedures?.(); await stop?.(); snapshots.clear(); inspected.clear(); if (--owner!.refs === 0) { owners.delete(key); await runner.dispose() } },
     }
   } })
 }

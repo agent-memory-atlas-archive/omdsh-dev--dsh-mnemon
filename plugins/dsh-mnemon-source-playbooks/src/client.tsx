@@ -1,4 +1,5 @@
 import { SkillFiles } from './file-client.tsx'
+import { SkillsPage } from './skill-client.tsx'
 import { LibraryViews } from './library-client.tsx'
 import { installMemorySourceUI, type MemorySourcePageProps, type MemorySourceUIContext } from 'dsh-mnemon/client'
 import { createCollectionPage, RecordActionPanel, type RecordActionPanelOptions } from 'dsh-mnemon-workspace-kit/client'
@@ -97,4 +98,4 @@ const categoryOptions: RecordActionPanelOptions = {
   details: (record, zh) => <p>{zh ? '本次将修改所选条目同一作用域内的整个分类，保留方法正文与历史。当前分类：' : 'Changes this entire category within the selected record’s scope, preserving contents and history. Current category: '}{String(record.data.category)} · {record.scope}</p>,
 }
 export function Page(props: MemorySourcePageProps) { return <><LibraryPage {...props} /><hr /><RecordActionPanel {...props} options={categoryOptions} /><RecordActionPanel {...props} options={invokeOptions} /><RecordActionPanel {...props} options={scheduleOptions} /><SkillFiles {...props} /></> }
-export function apply(ctx: MemorySourceUIContext): void { installMemorySourceUI(ctx, { sourceTypeId: 'playbooks', pages: [{ id: 'records', label: 'Playbooks', localizedLabel: { en: 'Playbooks', 'zh-CN': '工作方法' }, order: 44, component: Page, navigation: { group: 'sources', primary: true } }] }) }
+export function apply(ctx: MemorySourceUIContext): void { installMemorySourceUI(ctx, { sourceTypeId: 'playbooks', pages: [{ id: 'records', label: 'Playbooks', localizedLabel: { en: 'Playbooks', 'zh-CN': '工作方法' }, order: 44, component: Page, navigation: { group: 'sources', primary: true } }, { id: 'skills', label: 'Skills', localizedLabel: { en: 'Skills', 'zh-CN': '技能' }, order: 45, component: SkillsPage, navigation: { group: 'sources', primary: true } }] }) }

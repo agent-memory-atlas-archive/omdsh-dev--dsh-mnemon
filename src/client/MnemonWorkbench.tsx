@@ -108,9 +108,8 @@ function WorkspaceNavigation(props: { page: Page; onSelect(page: Page): void; so
     { id: 'status', page: 'status', label: t('nav.status'), detail: '', group: 'system', glyph: '⌘', primary: true },
     ...props.sourcePages,
   ]
-  const selectedType = sourcePageEntryId(props.page)?.split('/')[0]
   const button = (item: SourceNavigationEntry) => {
-    const active = props.page === item.page || selectedType !== undefined && selectedType === item.sourceTypeId
+    const active = props.page === item.page
     const disabled = item.sourceTypeId !== undefined && props.disabledTypes.has(item.sourceTypeId)
     return <button key={item.id} type="button" role="tab" aria-selected={active} data-active={active ? '' : undefined} aria-label={disabled ? item.label + ' · ' + t('layers.disabledBadge') : undefined} data-layer-disabled={disabled ? '' : undefined} onClick={() => props.onSelect(item.page)}><span>{item.label}</span>{disabled && <em className={css.layerDisabledBadge}>{t('layers.disabledBadge')}</em>}</button>
   }

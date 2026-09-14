@@ -145,6 +145,9 @@
         - id: mnemon-source-learning
           name: dsh-mnemon-source-learning
           disabled: true
+        - id: mnemon-strategy-skill-refinement
+          name: dsh-mnemon-strategy-skill-refinement
+          disabled: true
         - id: mnemon-strategy-learning-cycle
           name: dsh-mnemon-strategy-learning-cycle
           disabled: true

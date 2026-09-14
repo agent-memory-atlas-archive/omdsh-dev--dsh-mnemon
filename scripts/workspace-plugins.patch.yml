@@ -50,3 +50,6 @@
   disabled: false
 - id: mnemon-source-notifications
   disabled: false
+
+- id: mnemon-strategy-skill-refinement
+  disabled: false

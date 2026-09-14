@@ -41,3 +41,25 @@ Prompt summaries and tags aid discovery. Built-in `date` and `time` use UTC and 
 Name, exact category, tag and summary filters combine in the model route and human page. Categories come from saved records; creating with a new category adds it. Reviewed rename/removal affects only the selected category in its own scope and preserves text/history. Partial model metadata edits preserve unrelated fields.
 
 模型路由和人类页面支持名称、精确分类、标签与简介共同筛选。分类来自已存条目；新建条目可引入新分类。审核后的分类重命名或移除仅影响其自身作用域，保留正文和历史。模型局部修改元信息时保留其他字段。
+
+## Native skill versions
+
+The **Skills** page extends this Source with complete native bundles: `SKILL.md`, scripts, references and tests. **Generate from experience** reads an exact reusable procedure from this Source or, when installed, the Learning Source's scoped public event. Generation uses the selected session's DSH model. Existing native user/custom skills can also be inspected and refined; their original files stay available during review. The independent `dsh-mnemon-strategy-skill-refinement` extension can suggest candidates after enough evidence or new negative feedback. It remains off by default.
+
+A candidate does not enter the native registry. Review its resources and declared commands, then run checks through the current session's native DSH tools and permission policy. Results retain command output, exit status and the candidate digest; any edit invalidates them. Executable bundles require passing checks; advisory skills need no artificial script. Publishing atomically materializes the exact version and replaces only the inspected active predecessor. Both model and human revisions retain evidence and version history. Restoring a historical version creates another candidate that must be checked and reviewed.
+
+Native loading, associated shell commands, model-reported use and explicit human feedback are separate events. Command outcomes belong to the complete native shell command; a wrapper that masks a script's exit code cannot establish that script's success. Use native `workdir` and preserve script exit codes. Negative observations remain unresolved until a reviewed replacement addresses the exact inspected feedback. New feedback arriving during generation stays outstanding. When Learning is installed, publication, validation, execution and human feedback also become attributed observations there.
+
+The native catalog follows the active session's preset and workspace. It supports additional directory discovery, text resource editing with digest checks, and native enable/disable metadata. Project and bundled skills remain protected; published managed bundles use version review. The shared Core `MemoryFileEditor` supplies resource navigation, Markdown preview, comparisons, immutable published views, and semantic light/dark theme colors.
+
+Limits: 24 text resources per bundle, 64 KiB per resource, 90,000 serialized file characters and six declared checks. At most two model/check runs execute per Source owner, with a three-minute total deadline and the native tool's per-command timeout. Runs survive Strategy recomposition and retain durable interrupted/cancelled states. Multiple Source instances must use distinct native Provider names and their own data directories.
+
+### 技能版本管理
+
+「技能」页面将经验整理为完整原生资源包：`SKILL.md`、脚本、参考资料和测试。可从精确经验依据生成，也可读取现有原生技能的全部资源后提出修订。生成使用当前会话选定的 DSH 模型；独立「技能改进」策略按证据门槛或新增负面反馈提醒模型处理，默认关闭。
+
+候选先保持未启用。审核资源和命令后，由当前会话的 DSH 原生工具执行检查并保留输出、退出码与内容摘要。编辑后原验证失效；含脚本的技能须通过检查，纯说明技能无需人为添加脚本。发布才进入原生目录，并原子替换已检查的旧版本。历史恢复也生成待审核候选。
+
+原生加载、关联命令执行、模型报告和人工反馈分别计数。命令结果表示整个 shell 命令的退出状态；尾随命令吞掉错误时，不能据此证明内部脚本成功。负面反馈只有在审核发布对应修订后才标记已处理；生成期间新增反馈继续保留。启用经验整理 Source 后，真实结果与明确人工反馈还会回流为带来源的观察记录。
+
+原生目录遵循当前预设与项目，支持附加目录接入、资源编辑及启停；项目内和随系统提供的技能保持只读。托管版本统一经过资源对比、验证和发布流程，Core 共享编辑器提供明暗主题及窄屏布局。
