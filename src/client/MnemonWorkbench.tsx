@@ -114,8 +114,8 @@ function WorkspaceNavigation(props: { page: Page; onSelect(page: Page): void; so
     const disabled = item.sourceTypeId !== undefined && props.disabledTypes.has(item.sourceTypeId)
     return <button key={item.id} type="button" role="tab" aria-selected={active} data-active={active ? '' : undefined} aria-label={disabled ? item.label + ' · ' + t('layers.disabledBadge') : undefined} data-layer-disabled={disabled ? '' : undefined} onClick={() => props.onSelect(item.page)}><span>{item.label}</span>{disabled && <em className={css.layerDisabledBadge}>{t('layers.disabledBadge')}</em>}</button>
   }
-  return <div className={appearanceClass(css.topNavigation, sidebarCss.topNavigation)}>
-    {entries.length > 7 && <select aria-label={t('nav.aria')} value={props.page} onChange={event => props.onSelect(event.target.value as Page)} style={{maxWidth:180,flexShrink:0,background:'transparent',color:'inherit',border:'1px solid #555',borderRadius:6,padding:'6px 10px'}}>{entries.map(entry => <option key={entry.id} value={entry.page}>{entry.label}</option>)}</select>}
+  return <div className={appearanceClass(css.topNavigation, sidebarCss.topNavigation)} data-page-picker={entries.length > 7 ? '' : undefined}>
+    {entries.length > 7 && <select className={css.pagePicker} aria-label={t('nav.aria')} value={props.page} onChange={event => props.onSelect(event.target.value as Page)}>{entries.map(entry => <option key={entry.id} value={entry.page}>{entry.label}</option>)}</select>}
     <div className={appearanceClass(css.nav, sidebarCss.nav)} role="tablist" aria-label={t('nav.aria')}>{entries.filter(entry => entry.primary).map(button)}</div>
   </div>
 }

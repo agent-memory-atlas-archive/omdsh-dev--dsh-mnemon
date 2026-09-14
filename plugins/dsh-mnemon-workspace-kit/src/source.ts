@@ -37,16 +37,16 @@ export interface RecordSourceOptions {
   mutate?(operation: string, input: { [key: string]: MemoryJsonValue }, context: { records: RecordValue[]; scope: MemoryOperationScope; signal?: AbortSignal }): Promise<void> | void
 }
 
-const writeSchema: MemoryJsonValue = { type: 'object', additionalProperties: false, required: ['title'], properties: {
-  title: { type: 'string', maxLength: 300 }, content: { type: 'string', maxLength: 100000 }, kind: { type: 'string' },
-  scope: { type: 'string', enum: ['global', 'project', 'session', 'daily'] }, date: { type: 'string' }, data: { type: 'object' },
+const writeSchema = (options: RecordSourceOptions): MemoryJsonValue => ({ type: 'object', additionalProperties: false, required: ['title'], properties: {
+  title: { type: 'string', maxLength: 300 }, content: { type: 'string', maxLength: 100000 }, kind: { type: 'string', enum: [...options.kinds], default: options.kinds[0]! },
+  scope: { type: 'string', enum: [...options.scopes], default: options.defaultScope }, date: { type: 'string' }, data: { type: 'object' },
   supersedes: { type: 'object', additionalProperties: false, required: ['id', 'version'], properties: { id: { type: 'string' }, version: { type: 'integer', minimum: 1 } } },
-} }
-const readSchema: MemoryJsonValue = { type: 'object', additionalProperties: false, properties: {
-  id: { type: 'string' }, query: { type: 'string' }, kind: { type: 'string' }, since: { type: 'string' }, until: { type: 'string' },
+} })
+const readSchema = (options: RecordSourceOptions): MemoryJsonValue => ({ type: 'object', additionalProperties: false, properties: {
+  id: { type: 'string' }, query: { type: 'string' }, kind: { type: 'string', enum: [...options.kinds] }, since: { type: 'string' }, until: { type: 'string' },
   date: { type: 'string' }, status: { type: 'string' }, limit: { type: 'integer', minimum: 1, maximum: 100 },
   all: { type: 'boolean' }, recent: { type: 'boolean' }, archived: { type: 'boolean' },
-} }
+} })
 
 /** Adapts one Source's own schema to Core contracts; all domain policy stays with its author. */
 export function createRecordSource(options: RecordSourceOptions, config: RecordSourceConfig = {}): MemorySourceDefinition {
@@ -56,8 +56,8 @@ export function createRecordSource(options: RecordSourceOptions, config: RecordS
     manifest: { apiVersion: COMPOSABLE_MEMORY_API_VERSION, kind: 'source', typeId: options.typeId, packageName, role: options.role,
       capabilities: ['status', 'project', 'recall', 'write', 'export', 'import'], consistency: 'exact-snapshot',
       management: { label: options.label, description: options.description },
-      routes: [{ id: 'search', description: `Search and read ${options.label}.`, capability: 'recall', inputSchema: readSchema, maxCalls: 8, maxResults: 20, maxCharacters: 12_000 }],
-      actions: [{ id: modelAction, description: modelAction === 'append' ? `Append a new ${options.label} record; existing records are preserved.` : `Propose a ${options.label} record for human approval; it stays inactive until approved.${options.reviewedRevisions ? ' To refine an existing record, read its full content first, then supply supersedes with its exact id and version. The original remains active until the revision is approved.' : ''}`, capability: 'write', inputSchema: writeSchema }, ...options.modelActions ?? []],
+      routes: [{ id: 'search', description: `Search and read ${options.label}.`, capability: 'recall', inputSchema: readSchema(options), maxCalls: 8, maxResults: 20, maxCharacters: 12_000 }],
+      actions: [{ id: modelAction, description: modelAction === 'append' ? `Append a new ${options.label} record; existing records are preserved.` : `Propose a ${options.label} record for human approval; it stays inactive until approved.${options.reviewedRevisions ? ' To refine an existing record, read its full content first, then supply supersedes with its exact id and version. The original remains active until the revision is approved.' : ''}`, capability: 'write', inputSchema: writeSchema(options) }, ...options.modelActions ?? []],
     },
     create(context) {
       const store = new RecordStore(sourceRecordDirectory(options.typeId, context, config))
@@ -93,7 +93,8 @@ export function createRecordSource(options: RecordSourceOptions, config: RecordS
       function create(input: { [key: string]: MemoryJsonValue }, scope: MemoryOperationScope, state: RecordValue['state']): RecordValue {
         const kind = memoryInputText(input.kind, 'kind', 64, false) ?? options.kinds[0]!
         const selectedScope = (options.scopeForKind?.[kind] ?? memoryInputText(input.scope, 'scope', 20, false) ?? options.defaultScope) as RecordScope
-        if (!options.kinds.includes(kind) || !options.scopes.includes(selectedScope)) throw new Error('Unsupported record kind or scope')
+        if (!options.kinds.includes(kind)) throw new Error(`Unsupported record kind. Choose one of: ${options.kinds.join(', ')}`)
+        if (!options.scopes.includes(selectedScope)) throw new Error(`Unsupported record scope. Choose one of: ${options.scopes.join(', ')}`)
         const data = input.data === undefined ? {} : memoryInputRecord(input.data, 'record data')
         if (Object.keys(data).some(key => ['mnemonTransfer', 'mnemonSupersedes', 'mnemonSupersededBy'].includes(key))) throw new Error('Transfer and revision identities are reserved for reviewed handoffs')
         const now = new Date().toISOString()

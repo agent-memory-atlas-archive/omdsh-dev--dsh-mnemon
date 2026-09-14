@@ -98,7 +98,8 @@ export function apply(ctx: Context, config: Config = {}): void {
       const messages = input.history.flatMap(pair => [createUserMessage({ content: [{ type: 'text', text: pair.prompt || 'Previous review' }], source: { kind: 'plugin', plugin: name, form: 'recall' } }), createAssistantMessage({ content: [{ type: 'text', text: pair.answer }], source: { provider, model } })])
       messages.push(createUserMessage({ content: [{ type: 'text', text: input.prompt }], source: { kind: 'plugin', plugin: name, form: 'recall' } }))
       let text = '', completed = false
-      for await (const chunk of ctx.llm.stream({ provider, model, messages, system: reviewContract + '\nInstance constraints:\n' + (config.instanceConstraints ?? '').slice(0, 8000), tools: [], maxTokens: 4000, signal: input.signal, sessionId: SessionId(input.reviewerId) })) {
+      // Leave room for the provider's reasoning before the bounded JSON report.
+      for await (const chunk of ctx.llm.stream({ provider, model, messages, system: reviewContract + '\nInstance constraints:\n' + (config.instanceConstraints ?? '').slice(0, 8000), tools: [], maxTokens: 16000, signal: input.signal, sessionId: SessionId(input.reviewerId) })) {
         input.signal.throwIfAborted()
         if (chunk.type === 'text-delta') { text += chunk.text; if (text.length > 20_000) throw new Error('Review output exceeds its bound') }
         if (chunk.type === 'finish') { if (chunk.reason.kind !== 'stop') throw new Error('Review model did not finish normally: ' + chunk.reason.kind); completed = true }

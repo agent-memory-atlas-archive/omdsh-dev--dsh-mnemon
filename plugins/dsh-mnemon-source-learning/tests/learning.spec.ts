@@ -83,6 +83,23 @@ it('only automatically adopts eligible opted-in learning and never resurrects re
   await human(store, 3); await review(store, 'preference', 'Keep responses brief')
   expect((await store.store.read()).records.find(r => r.data.category === 'preference')?.state).toBe('active')
 })
+it('closes feedback only when the reviewed replacement is approved, retaining the evidence and original history', async () => {
+  const store = await fixture(); await human(store, 1); await review(store, 'fact')
+  let snapshot = await store.store.read(), original = snapshot.records.find(r => r.kind === 'proposal')!
+  snapshot = await store.change(scope, 'approve', { id: original.id, version: original.version }); original = snapshot.records.find(r => r.id === original.id)!
+  await store.change(scope, 'record-feedback', { id: original.id, version: original.version, verdict: 'incorrect', quote: 'Keep exact technical identifiers.', eventKey: 'correction' })
+  const window = learningWindow(await store.store.read(), scope)!
+  const proposal = { category: 'fact' as const, scope: 'project' as const, title: 'Reviewed convention', content: 'Use concise reports with exact technical identifiers.', evidenceIds: window.evidence.map(r => r.id), supersedes: original.id }
+  await expect(store.complete(scope, { token: window.token, summary: 'Wrong category', proposals: [{ ...proposal, category: 'procedure', slug: 'report-results' }] }, window)).rejects.toThrow('same category')
+  snapshot = await store.complete(scope, { token: window.token, summary: 'Apply the explicit correction', proposals: [proposal] }, window)
+  original = snapshot.records.find(r => r.id === original.id)!
+  const replacement = snapshot.records.find(r => r.data.supersedes === original.id)!
+  expect(original).toMatchObject({ state: 'active', data: { needsReview: true } })
+  snapshot = await store.change(scope, 'batch-approve', { recordIds: [replacement.id], versions: { [replacement.id]: replacement.version }, supersededVersions: { [replacement.id]: original.version } })
+  expect(snapshot.records.find(r => r.id === original.id)).toMatchObject({ state: 'archived', data: { needsReview: false, replacedBy: replacement.id, feedbackResolution: 'Replaced by an approved revision.' } })
+  expect(snapshot.records.find(r => r.id === replacement.id)?.state).toBe('active')
+  expect(snapshot.records.some(r => r.kind === 'assessment' && r.data.eventKey === 'correction')).toBe(true)
+})
 it('tracks an exported proposal without duplicating active local memory', async () => {
   const store = await fixture(); await human(store, 1); await review(store, 'fact')
   let candidate = (await store.store.read()).records.find(r => r.kind === 'proposal')!

@@ -23,6 +23,19 @@ async function fixture(overrides: Partial<RecordSourceOptions> = {}) {
 }
 
 describe('scoped record Source', () => {
+  it('offers only the owning Source kinds and scopes and rejects unsupported model writes without changing records', async () => {
+    const { runner, scope } = await fixture({ kinds: ['fact', 'decision'], scopes: ['project'] })
+    try {
+      const turn = await runner.beginTurn({ scope }), offer = turn.view.actionOffers[0]!
+      expect(offer.inputSchema).toMatchObject({ properties: { kind: { enum: ['fact', 'decision'], default: 'fact' }, scope: { enum: ['project'], default: 'project' } } })
+      await expect(turn.executeAction(offer.id, { title: 'Convention', kind: 'convention' }, () => true)).rejects.toThrow(/kind|schema|enum/)
+      const client = await runner.managementClient('source:notes', scope)
+      expect(((await client.read('snapshot')).value as unknown as RecordSnapshot).records).toHaveLength(0)
+      await turn.executeAction(offer.id, { title: 'Convention', kind: 'fact', scope: 'project' }, () => true)
+      expect(((await client.read('snapshot')).value as unknown as RecordSnapshot).records[0]).toMatchObject({ kind: 'fact', scope: 'project', state: 'pending' })
+    } finally { await runner.dispose() }
+  })
+
   it('receives a cross-plugin proposal once and refuses changed retries without overwriting the destination', async () => {
     const { runner, scope } = await fixture()
     try {

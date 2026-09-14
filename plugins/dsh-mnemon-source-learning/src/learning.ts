@@ -102,7 +102,7 @@ export class LearningStore {
           candidate.data.humanKeys = [...new Set([...array(candidate.data.humanKeys), ...humanKeys])].slice(-100)
           candidate.signals = array(candidate.data.independentKeys).length
         } else {
-          if (proposal.supersedes && !pinned.proposals.some(p => p.id === proposal.supersedes && p.state === 'active' && p.scope === proposal.scope)) throw new Error('Read the active proposal before suggesting a replacement')
+          if (proposal.supersedes && !pinned.proposals.some(p => p.id === proposal.supersedes && p.state === 'active' && p.scope === proposal.scope && p.data.category === proposal.category)) throw new Error('Read the active proposal in the same category before suggesting a replacement')
           candidate = newRecord('proposal', proposal.title, proposal.content, proposal.scope, scope, {
             category: proposal.category, fingerprint, evidenceIds: proposal.evidenceIds, independentKeys: keys, humanKeys,
             ...(proposal.slug ? { slug: proposal.slug } : {}), ...(proposal.supersedes ? { supersedes: proposal.supersedes } : {}),
@@ -175,9 +175,10 @@ export class LearningStore {
       }
       if (operation === 'approve') {
         if (record.data.supersedes) {
-          const previous = records.find(r => r.id === record.data.supersedes && r.kind === 'proposal' && r.state === 'active' && r.scope === record.scope && visibleRecord(r, scope))
+          const previous = records.find(r => r.id === record.data.supersedes && r.kind === 'proposal' && r.state === 'active' && r.scope === record.scope && r.data.category === record.data.category && visibleRecord(r, scope))
           if (!previous || input.supersededVersion !== previous.version) throw new Error('Review the current replacement before adoption')
           reviseRecord(previous, 'superseded'); previous.state = 'archived'; previous.data.replacedBy = record.id
+          if (previous.data.needsReview === true) { previous.data.needsReview = false; previous.data.feedbackResolution = 'Replaced by an approved revision.'; previous.data.feedbackResolvedAt = new Date().toISOString() }
         }
         record.state = 'active'; record.data.adoptedAt = new Date().toISOString()
       }

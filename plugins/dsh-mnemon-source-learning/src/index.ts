@@ -22,10 +22,11 @@ export function apply(ctx: Context, config: Config = {}): void {
     if (!provider || !model) throw new Error('Choose a model or send a message in the selected session first')
     const messages = [createUserMessage({ content: [{ type: 'text', text: reviewPrompt(window) }], source: { kind: 'plugin', plugin: name, form: 'recall' } })]
     let text = '', completed = false
-    for await (const chunk of ctx.llm.stream({ provider, model, messages, system: learningContract, tools: [], maxTokens: 5000, signal, sessionId: SessionId(crypto.randomUUID()) })) {
+    // Reasoning models share this allowance between deliberation and JSON output.
+    for await (const chunk of ctx.llm.stream({ provider, model, messages, system: learningContract, tools: [], maxTokens: 16000, signal, sessionId: SessionId(crypto.randomUUID()) })) {
       signal.throwIfAborted()
       if (chunk.type === 'text-delta') { text += chunk.text; if (text.length > 30_000) throw new Error('Learning output exceeded its limit') }
-      if (chunk.type === 'finish') { if (chunk.reason.kind !== 'stop') throw new Error('Learning model did not finish normally'); completed = true }
+      if (chunk.type === 'finish') { if (chunk.reason.kind !== 'stop') throw new Error('Learning model did not finish normally: ' + chunk.reason.kind + '; evidence remains available for another review'); completed = true }
     }
     if (!completed) throw new Error('Learning stream ended before completion')
     return text

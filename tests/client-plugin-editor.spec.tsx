@@ -5,6 +5,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { MemoryMarkdown, MemoryMarkdownEditor } from '../src/client/plugin-editor.tsx'
 import { SkillFiles } from '../plugins/dsh-mnemon-source-playbooks/src/file-client.tsx'
 import { Page as Canvas } from '../plugins/dsh-mnemon-source-canvas/src/client.tsx'
+import { Page as Learning } from '../plugins/dsh-mnemon-source-learning/src/client.tsx'
 import type { MemorySourcePageProps } from '../src/client/source-pages.tsx'
 
 afterEach(cleanup)
@@ -42,6 +43,21 @@ it('saves only changed writable drafts with either platform shortcut', () => {
 const props = (management: MemorySourcePageProps['management'], workspaceId = '/workspace'): MemorySourcePageProps => ({
   sourceInstanceKey: 'test/source', sourceTypeId: 'playbooks', locale: 'en', workspaceId, sessionId: 'test-session', writable: true, management,
 } as MemorySourcePageProps)
+
+it('replaces the running notice after a durable learning review completes', async () => {
+  const cycle = { id: 'cycle', kind: 'cycle', data: { rounds: 2, completedRound: 0, status: 'idle' } }
+  const read = vi.fn().mockImplementation(async () => ({ revision: 'r1', value: { records: [structuredClone(cycle)] } }))
+  const mutate = vi.fn().mockImplementation(async () => { cycle.data.status = 'running'; return read() })
+  const management = { sourceInstanceKey: 'test/source', read, mutate } as unknown as MemorySourcePageProps['management']
+  render(<Learning {...props(management)} />)
+  await waitFor(() => expect((screen.getByRole('button', { name: 'Review learning' }) as HTMLButtonElement).disabled).toBe(false))
+  fireEvent.click(screen.getByRole('button', { name: 'Review learning' }))
+  await screen.findByRole('button', { name: 'Reviewing…' })
+  cycle.data.status = 'idle'; cycle.data.completedRound = 2
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh' }))
+  await screen.findByText('Review complete. Proposals are ready for approval.')
+  expect(screen.queryByText('Reviewing…')).toBeNull()
+})
 
 it('retains skill edits after a failed save and never reuses them in another workspace', async () => {
   const read = vi.fn().mockResolvedValue({ revision: 'r1', value: { path: '/skills/review/SKILL.md', digest: 'v1', content: 'Original' } })
