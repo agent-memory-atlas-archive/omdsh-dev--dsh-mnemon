@@ -58,7 +58,7 @@ pnpm build:plugins
 node scripts/serve-workspace.mjs --state-dir ../services --mnemon /absolute/path/to/mnemon --port 5279 --workspace-plugins
 ```
 
-监督进程复制指定 Mnemon 二进制，隔离 `DSH_HOME` 和 `MNEMON_DATA_DIR`，将 profile、日志、数据库与合成工作区保留在 `--state-dir`。同时生成包含本检出与合成工作区的 `workspace.code-workspace`。通过 DSH“添加工作区”加入实际代码目录，即可操作隔离分支。输出的带认证 URL 属于本机访问资料，不应进入提交或截图。
+监督进程复制指定 Mnemon 二进制，隔离 `DSH_HOME` 和 `MNEMON_DATA_DIR`，将 profile、日志、数据库与合成工作区保留在 `--state-dir`。同时生成包含本检出与合成工作区的 `workspace.code-workspace`。通过 DSH“添加工作区”加入实际代码目录，即可操作隔离分支。首次访问应打开 `dsh web` 输出的完整 URL，以建立浏览器认证；直接打开不带认证信息的地址可能显示“authentication required”。输出的带认证 URL 属于本机访问资料，不应进入提交或截图。
 
 固定模型和 CLI 测试程序用于检验编排。显式测试标记驱动经过审核的工具调用与合成 token 用量，不代表模型质量、外部计费或第三方账号实际送达。`--model configured` 使用调用进程的模型环境，不把凭证保存在仓库。Mnemon Native 按需运行真实 CLI，不需要常驻守护进程；嵌入服务另行配置。
 
@@ -87,5 +87,7 @@ pnpm release:intent
 ## 经验整理与数据回流
 
 需要周期性改进时，在插件管理中开启**经验整理**和**经验整理周期**。Source 拥有证据、待审核建议、转存与明确反馈，增强负责调度；默认仍为原始三层记忆。在经验整理页检查证据、编辑并采纳建议，使用后记录帮助或问题。读取与模型自报使用单独显示。回流和自动采纳开关会持久化，失败或中断的整理保留未完成状态。全局偏好采纳需要两条独立人工证据。转入其他 Source 时仅创建一个目标待审核条目并保留关联，不会同时激活两份内容。
+
+整理输入保留 Source 提供的执行状态、退出码、严重程度和来源归属。助手自述保持未经确认，失败、阻塞或取消不作为成功结果；退出码为零只证明进程完成。这些结果与明确反馈分别计数，不增加人工轮次。替换建议通过审核后才归档原条目并解除其待复核标记，同时保留纠正证据和历史。
 
 可选插件页面共享 `dsh-mnemon/client` 的主题化页面、通知和指标控件；自定义布局应使用这些浏览器 SDK 组件。策略配置支持类型化布尔开关。

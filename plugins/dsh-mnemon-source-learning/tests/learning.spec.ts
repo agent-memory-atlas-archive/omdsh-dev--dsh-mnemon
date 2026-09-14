@@ -129,6 +129,26 @@ it('bounds model evidence with explicit excerpts and enforces proposal limits an
   expect(() => parseLearningReview({ token: 't', summary: 'review', proposals: [{ category: 'fact', scope: 'project', title: 'Secret', content: 'sk-abcdefghijklmnopqrstuvwxyz123456', evidenceIds: ['one'] }] })).toThrow('Credentials')
 })
 
+it('carries attribution and terminal outcomes into model evidence without promoting them to human confirmation', async () => {
+  const store = await fixture(); await human(store, 1)
+  await store.observe(scope, { eventKey: 'assistant-report', origin: 'task-outcome', title: 'Reported result', content: 'Everything succeeded.', data: { attribution: 'assistant-report', verifiedByHuman: false, arbitraryPayload: { private: 'omit' } } })
+  await store.observe(scope, { eventKey: 'cancelled-job', origin: 'job-outcome', title: 'Cancelled check', content: 'Waiting before the model request.', data: { activityKind: 'job-completed', status: 'cancelled', level: 'warning', exitCode: 143 } })
+  await store.observe(scope, { eventKey: 'failed-job', origin: 'job-outcome', title: 'Failed check', content: 'Started successfully but then failed.', data: { activityKind: 'job-completed', status: 'failed', level: 'warning', exitCode: 9 } })
+  await store.observe(scope, { eventKey: 'successful-process', origin: 'job-outcome', title: 'Finished process', content: 'An unverified generated conclusion.', data: { activityKind: 'job-completed', status: 'succeeded', level: 'info', exitCode: 0 } })
+  await store.observe(scope, { eventKey: 'explicit-correction', origin: 'human-feedback', title: 'Correction', content: 'The process did not finish the check.', data: { proposalId: 'candidate-1', verdict: 'incorrect', exactQuote: true } })
+  const window = learningWindow(await store.store.read(), scope)!, prompt = JSON.parse(reviewPrompt(window))
+  expect(prompt.throughRound).toBe(1)
+  expect(prompt.evidence).toEqual(expect.arrayContaining([
+    expect.objectContaining({ title: 'Reported result', attribution: 'assistant-report', verifiedByHuman: false }),
+    expect.objectContaining({ title: 'Cancelled check', activityKind: 'job-completed', status: 'cancelled', level: 'warning', exitCode: 143 }),
+    expect.objectContaining({ title: 'Failed check', status: 'failed', exitCode: 9 }),
+    expect.objectContaining({ title: 'Finished process', status: 'succeeded', exitCode: 0 }),
+    expect.objectContaining({ proposalId: 'candidate-1', verdict: 'incorrect', exactQuote: true }),
+  ]))
+  expect(reviewPrompt(window)).not.toContain('arbitraryPayload')
+  expect(prompt.evidence.filter((record: { origin: string }) => record.origin === 'human-turn')).toHaveLength(1)
+})
+
 it('persists policy choices and reviews feedback without inventing another human turn', async () => {
   const store = await fixture(); await human(store, 1); await review(store, 'fact')
   let snapshot = await store.store.read(), candidate = snapshot.records.find(r => r.kind === 'proposal')!

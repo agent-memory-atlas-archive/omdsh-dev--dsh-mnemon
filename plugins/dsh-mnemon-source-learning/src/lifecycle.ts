@@ -16,7 +16,7 @@ export function installLearningCapture(ctx: Context, learning: LearningStore, so
   const stopOperations = ctx.mnemonMemory.observeOperations(event => enqueue(() => learning.operation(event, sourceInstanceKey, abort.signal)))
   const stopActivity = ctx.on('mnemon-workspace/activity', activity => {
     if (!['job-completed', 'task-completed', 'task-blocked', 'review-completed'].includes(activity.kind)) return
-    enqueue(async () => { if ((await learning.policy(abort.signal)).captureOutcomes === false) return; await learning.observe(activity.scope, { eventKey: activity.sourceInstanceKey + ':' + activity.eventKey, origin: activity.kind === 'review-completed' ? 'review-output' : activity.kind === 'job-completed' ? 'job-outcome' : 'task-outcome', title: activity.title, content: activity.summary, data: { sourceInstanceKey: activity.sourceInstanceKey, recordId: activity.recordId ?? '', level: activity.level } }, abort.signal) })
+    enqueue(async () => { if ((await learning.policy(abort.signal)).captureOutcomes === false) return; await learning.observe(activity.scope, { eventKey: activity.sourceInstanceKey + ':' + activity.eventKey, origin: activity.kind === 'review-completed' ? 'review-output' : activity.kind === 'job-completed' ? 'job-outcome' : 'task-outcome', title: activity.title, content: activity.summary, data: { sourceInstanceKey: activity.sourceInstanceKey, recordId: activity.recordId ?? '', activityKind: activity.kind, level: activity.level, ...(activity.status ? { status: activity.status.slice(0, 100) } : {}), ...(activity.exitCode === undefined ? {} : { exitCode: activity.exitCode }) } }, abort.signal) })
   })
   const stopHooks = installAgentHooks(ctx, {
     async beforeStep(input) {

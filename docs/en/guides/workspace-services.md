@@ -58,7 +58,7 @@ pnpm build:plugins
 node scripts/serve-workspace.mjs --state-dir ../services --mnemon /absolute/path/to/mnemon --port 5279 --workspace-plugins
 ```
 
-The supervisor copies the selected Mnemon binary, isolates `DSH_HOME` and `MNEMON_DATA_DIR`, and retains the profile, logs, database and synthetic workspace below `--state-dir`. It also writes `workspace.code-workspace`, containing this checkout and the synthetic workspace. Add the actual checkout using DSH's Add workspace button to work with the isolated Git branch. The printed authenticated URL is local access information; keep it out of commits and screenshots.
+The supervisor copies the selected Mnemon binary, isolates `DSH_HOME` and `MNEMON_DATA_DIR`, and retains the profile, logs, database and synthetic workspace below `--state-dir`. It also writes `workspace.code-workspace`, containing this checkout and the synthetic workspace. Add the actual checkout using DSH's Add workspace button to work with the isolated Git branch. Open the exact URL printed by `dsh web` to establish browser authentication; opening the bare address first can return “authentication required”. The printed authenticated URL is local access information; keep it out of commits and screenshots.
 
 The fixture model and CLI worker validate orchestration. Explicit test markers drive reviewed tool calls and synthetic token-usage readings. They do not validate model quality, external provider billing or third-party account delivery. `--model configured` uses the caller's configured model environment without storing credentials in the repository. Mnemon Native runs the real CLI on demand; it does not require a permanent daemon. Embedding service configuration is independent.
 
@@ -87,5 +87,7 @@ The first command validates documentation, types, deterministic builds, all pack
 ## Learning and feedback
 
 Enable **Learning** and **Learning cycle** from the plugin manager when you need periodic improvement. The Source owns evidence, reviewed candidates, transfers and explicit feedback; the enhancement owns scheduling. Defaults remain the original three tiers. In the Learning page, inspect pending evidence, edit and adopt candidates, then record helpfulness or concerns after use. Reads and model-reported use are shown separately. Capture and automatic-adoption switches persist, and failed or interrupted reviews remain outstanding. Global preference adoption requires two independent human observations. Transfer to another Source creates one pending destination record and retains a durable link; it does not silently activate both copies.
+
+Review input preserves Source-owned execution status, exit codes, severity and attribution. Assistant reports are unverified claims; failed, blocked and cancelled work does not establish a successful outcome. A zero exit code establishes process completion only. These outcomes and explicit feedback have separate counters and do not add human rounds. A reviewed replacement archives the original and resolves its review flag only after approval, retaining the correction and history.
 
 Optional pages share host-theme surfaces, notices and metrics from `dsh-mnemon/client`; custom plugin layouts should use these browser SDK primitives. Strategy configuration supports typed boolean switches.

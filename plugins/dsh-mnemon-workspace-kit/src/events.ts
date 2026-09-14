@@ -10,6 +10,9 @@ export interface WorkspaceActivity {
   summary: string
   level: 'info' | 'warning' | 'error'
   recordId?: string
+  /** Owner-reported execution state; success alone is not human verification. */
+  status?: string
+  exitCode?: number
 }
 
 declare module '@deepseek-ai/cordis' {
